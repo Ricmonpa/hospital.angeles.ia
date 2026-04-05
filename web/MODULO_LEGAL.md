@@ -286,6 +286,6 @@ Para problemas o preguntas sobre el módulo legal:
 
 ---
 
-**Desarrollado para CHINOIN®**  
+**Hospital Ángeles IA**  
 Powered by Google Gemini AI
 

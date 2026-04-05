@@ -281,6 +281,6 @@ Genera informe médico en PDF automáticamente.
 
 ---
 
-**Desarrollado para CHINOIN®**  
+**Hospital Ángeles IA**  
 Powered by Google Gemini AI
 

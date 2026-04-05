@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Ángeles IA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Hospital Ángeles" class="logo">
+            <div>
+                <h1>Hospital Ángeles IA</h1>
+                <p>Dashboard de gestión médica</p>
+            </div>
+        </div>
+    </header>
+    <nav>
+        <a href="/" class="active">Dashboard</a>
+        <a href="/transcripcion">Transcripción (IA)</a>
+        <a href="/historial">Historial</a>
+        <a href="/agente-contable">Agente Contable</a>
+        <a href="/contador">Transacciones fiscales</a>
+    </nav>
+    <main>
+        <h2>Bienvenido, Dr./Dra.</h2>
+        
+        <div class="card highlight">
+            <h3>Empieza ahora</h3>
+            <p>Automatiza notas clínicas con IA.</p>
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/transcripcion" class="button primary">Iniciar transcripción</a>
+                {% if stats.total_consultas > 0 %}
+                <a href="/historial" class="button secondary">Ver historial ({{ stats.total_consultas }})</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card alert">
+                <h3>Alertas de cumplimiento</h3>
+                <ul class="alert-list">
+                    <li><strong>(2) Facturas pendientes de clasificar</strong></li>
+                    <li><strong>(1) Aviso de privacidad desactualizado</strong></li>
+                    <li><strong>(1) Consentimiento pendiente de revisión</strong></li>
+                </ul>
+            </div>
+
+            <div class="card stats">
+                <h3>Estadísticas de consultas</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total consultas:</span>
+                    <span class="stat-value">{{ stats.total_consultas }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Días activos:</span>
+                    <span class="stat-value">{{ stats.dias_activos }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Duración promedio:</span>
+                    <span class="stat-value">{{ stats.duracion_promedio }} min</span>
+                </div>
+                {% if stats.top_diagnosticos %}
+                <div style="margin-top: 15px;">
+                    <strong>Diagnósticos frecuentes:</strong>
+                    <ul style="margin-top: 8px; font-size: 0.9em;">
+                        {% for diag in stats.top_diagnosticos[:3] %}
+                        <li>{{ diag.diagnostico }} ({{ diag.frecuencia }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card info">
+            <h3>Hospital Ángeles</h3>
+            <p>Información corporativa y red de hospitales.</p>
+            <a href="https://www.hospitalangeles.com" target="_blank" rel="noopener noreferrer" class="button secondary">Sitio Hospital Ángeles</a>
+        </div>
+
+        <div class="card features">
+            <h3>Funcionalidades</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>Transcripción IA</h4>
+                    <p>Diálogo de consulta a notas SOAP</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Asistente legal</h4>
+                    <p>Consentimientos y cumplimiento</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Cumplimiento NOM</h4>
+                    <p>Consentimientos y avisos de privacidad</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Gestión fiscal</h4>
+                    <p>Agente Contable y transacciones</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2026 Hospital Ángeles — Suite IA para médicos | Gemini AI</p>
+    </footer>
+</body>
+</html>

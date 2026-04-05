@@ -243,7 +243,7 @@ El **Módulo Asistente Contable** está completamente funcional y listo para uso
 
 ---
 
-**Desarrollado para CHINOIN®**  
+**Hospital Ángeles IA**  
 Powered by Google Gemini AI  
 Fecha: Noviembre 2025  
 Versión: 1.0 - Fase 1 ✅

@@ -3,7 +3,7 @@
 **Última actualización:** 2026-03-12  
 **Commit actual:** `6c70e5e` en `main`  
 **Deploy:** Railway auto-deploy → https://web-production-5ca44.up.railway.app  
-**Repo:** https://github.com/Ricmonpa/chinoin-ai-consultorio.git
+**Repo:** https://github.com/Ricmonpa/hospital.angeles.ia.git (carpeta `web/`)
 
 ---
 

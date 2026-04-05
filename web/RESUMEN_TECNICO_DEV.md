@@ -1,6 +1,6 @@
-# Chinoin AI Consultorio — Resumen técnico (para devs)
+# Hospital Ángeles IA (`web/`) — Resumen técnico (para devs)
 
-**Producto:** SaaS B2B para clínicas/hospitales (Practice OS). MVP con transcripción de consultas, notas SOAP, contador fiscal, seguros, legal y farmacovigilancia.
+**Producto:** SaaS B2B para clínicas/hospitales (Practice OS). MVP con transcripción de consultas, notas SOAP, Agente Contable / transacciones fiscales, seguros, legal y farmacovigilancia.
 
 ---
 
@@ -12,7 +12,7 @@
 | DB | SQLite (`consultas.db`) |
 | IA | Google Gemini 2.0 Flash (REST). Opcional: Groq como fallback |
 | Front | HTML/CSS/JS, plantillas Jinja2 en `templates/`, estáticos en `static/` |
-| Deploy | Railway (Procfile, `PORT` env) |
+| Deploy | Railway: **Root Directory** `web` (Procfile, `PORT` inyectado) |
 
 ---
 

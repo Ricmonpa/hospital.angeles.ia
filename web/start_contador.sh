@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Iniciando Chinoin AI Consultorio Manager"
+echo "Iniciando Hospital Ángeles IA (módulo transacciones)"
 echo "============================================"
 echo ""
 

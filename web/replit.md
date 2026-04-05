@@ -1,7 +1,7 @@
-# Chinoin AI Consultorio Manager
+# Hospital Ángeles IA — aplicación web (`web/`)
 
 ## Descripción General
-Kit de herramientas de gestión médica con inteligencia artificial desarrollado para **CHINOIN**, empresa farmacéutica mexicana. Esta aplicación web proporciona herramientas gratuitas para médicos que automatizan la documentación clínica y ofrecen asesoría fiscal/legal.
+Suite web con inteligencia artificial para médicos: documentación clínica, fiscal (Agente Contable / transacciones), seguros y legal.
 
 ## Estado del Proyecto
 **Versión:** MVP 1.0  
@@ -36,9 +36,9 @@ Kit de herramientas de gestión médica con inteligencia artificial desarrollado
 │   ├── transcripcion.html      # Transcriptor de consultas con IA
 │   └── asesoria.html           # Asistente legal/contable
 ├── static/
-│   ├── style.css               # Estilos con branding CHINOIN
+│   ├── style.css               # Estilos Hospital Ángeles IA
 │   └── images/
-│       └── logo.png            # Logo corporativo CHINOIN
+│       └── logo.png            # Logo
 └── replit.md                   # Este archivo
 ```
 
@@ -82,13 +82,13 @@ Kit de herramientas de gestión médica con inteligencia artificial desarrollado
 - Resumen de actividad médica
 - Alertas de cumplimiento fiscal y legal
 - Resumen financiero rápido
-- Acceso al portal CHINOIN
+- Enlace a recursos Hospital Ángeles
 - Contador de consultas procesadas
 
 ## Branding y Diseño
 
-### Colores Corporativos CHINOIN
-- **Naranja principal:** `#FF6B4A` (marca CHINOIN)
+### Colores (Hospital Ángeles IA)
+- **Acento:** variables CSS `--ha-accent` / `--ha-navy` en `style.css`
 - **Negro/Gris oscuro:** `#000000`, `#1a1a1a`, `#2d2d2d`
 - **Acentos:** Gradientes naranja-negro para efecto premium
 
@@ -188,7 +188,7 @@ Renderiza la interfaz del asistente legal
 - [ ] Generación automática de CFDI
 - [ ] Calculadora de impuestos y declaración anual
 - [ ] Sistema de alertas automáticas NOM-004
-- [ ] Integración con inventario farmacéutico CHINOIN
+- [ ] Integraciones adicionales según roadmap
 
 ### Fase 4 - Optimización
 - [ ] Migrar a servidor WSGI (Gunicorn)
@@ -212,7 +212,7 @@ Los prompts en `main.py` están diseñados para:
 - Verificación de respuestas de IA antes de procesar
 
 ## Créditos
-Desarrollado para **CHINOIN®**  
+**Hospital Ángeles IA**  
 Powered by **Google Gemini AI**  
 Framework: **Flask**
 
@@ -228,4 +228,4 @@ Framework: **Flask**
 ---
 
 **Última actualización:** Octubre 2025  
-**Mantenedor:** Proyecto CHINOIN AI
+**Mantenedor:** Hospital Ángeles IA

@@ -227,6 +227,6 @@ Para dudas o sugerencias sobre el módulo:
 
 ---
 
-**Desarrollado para CHINOIN®**  
+**Hospital Ángeles IA**  
 Powered by Google Gemini AI  
 Versión 1.0 - Fase 1 Completada ✅
