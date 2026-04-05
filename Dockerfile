@@ -10,8 +10,10 @@ FROM python:3.11-slim-bookworm AS builder
 WORKDIR /build
 
 COPY requirements.txt .
+COPY web/requirements.txt ./web-requirements.txt
 
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Monorepo: herramientas fiscales (raíz) + app Flask en web/
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt -r web-requirements.txt
 
 # --------------- Stage 2: Runtime ---------------
 FROM python:3.11-slim-bookworm AS runtime
@@ -57,12 +59,14 @@ RUN chown -R opendoc:opendoc /app
 
 USER opendoc
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import google.generativeai; print('ok')" || exit 1
-
+# App demo en producción: Flask en web/ (PORT lo inyecta Railway)
+WORKDIR /app/web
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
-CMD ["python", "-m", "src.core.main"]
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD python -c "import flask; print('ok')" || exit 1
+
+# NO usar src.core.main aquí: es demo CLI y exige GEMINI_API_KEY al boot.
+CMD ["python", "main.py"]

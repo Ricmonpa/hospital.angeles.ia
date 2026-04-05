@@ -1,0 +1,12 @@
+# Despliegue desde la raíz del monorepo (sin "Root Directory" en UI).
+# Recomendado: en Railway → Settings → Root Directory = `web` y usa web/railway.toml.
+# Si dejas raíz vacía, este archivo arranca la app Flask correcta.
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "cd web && python main.py"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"

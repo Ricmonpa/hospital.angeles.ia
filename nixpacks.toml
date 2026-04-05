@@ -1,0 +1,3 @@
+# Instalar dependencias de la app Flask (la raíz tiene otro requirements.txt).
+[phases.install]
+cmds = ["pip install -r web/requirements.txt"]

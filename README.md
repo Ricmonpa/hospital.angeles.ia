@@ -4,7 +4,7 @@ Monorepo del demo: suite web para médicos + herramientas fiscales (Python).
 
 | Carpeta | Contenido |
 |--------|-----------|
-| **`web/`** | App **Flask** (UI, APIs, transcripción, Agente Contable, transacciones, seguros, legal, farmacovigilancia). **Despliegue Railway: Root Directory = `web`**. |
+| **`web/`** | App **Flask** (UI, APIs, transcripción, Agente Contable, transacciones, seguros, legal, farmacovigilancia). **Railway: Root Directory = `web`** *o* raíz del repo con `railway.toml` / Dockerfile ya corregidos (no ejecutar `src.core.main` en producción). |
 | **`src/`** | Módulos fiscales SAT / CFDI / calculadoras (Agente Contable). Importados desde `web/main.py`. |
 | **`data/`** | Prompts (`SOUL.md`), conocimiento fiscal, plantillas. |
 | **`tests/`** | Pruebas del paquete `src/`. |
