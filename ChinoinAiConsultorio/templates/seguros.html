@@ -1,0 +1,970 @@
+{% extends "base.html" %}
+{% block title %}Seguros — Hospital Ángeles IA{% endblock %}
+{% block extra_head %}
+    <style>
+        .seguros-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(var(--ha-accent-rgb), 0.2);
+        }
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        .credencial-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .credencial-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .aseguradora-badge {
+            background: linear-gradient(135deg, var(--ha-accent) 0%, var(--ha-accent-light) 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .info-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.9em;
+        }
+        .info-value {
+            color: #1e293b;
+        }
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: var(--ha-accent);
+            background: var(--ha-accent-soft);
+        }
+        .upload-area.dragover {
+            border-color: var(--ha-accent);
+            background: var(--ha-accent-soft);
+        }
+        .chat-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+        }
+        .chat-message {
+            margin: 15px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+        }
+        .chat-message.user {
+            background: #e0f2fe;
+            margin-left: auto;
+            text-align: right;
+        }
+        .chat-message.assistant {
+            background: #f1f5f9;
+            margin-right: auto;
+        }
+        .honorario-result {
+            background: #dcfce7;
+            border-left: 4px solid #15803d;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .honorario-monto {
+            font-size: 2em;
+            font-weight: bold;
+            color: #15803d;
+        }
+        .form-inline {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .form-inline input, .form-inline select {
+            flex: 1;
+            min-width: 200px;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top-color: var(--ha-accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #0f172a;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+            transition: all 0.35s ease;
+            z-index: 999;
+        }
+        .toast.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+        .tab:hover {
+            color: var(--ha-accent);
+        }
+        .tab.active {
+            color: var(--ha-accent);
+            border-bottom-color: var(--ha-accent);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+        <h2>🛡️ Módulo de Inteligencia Aseguradora</h2>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('escanner', this)">📸 Escáner Decodificador</button>
+            <button class="tab" onclick="switchTab('buscador', this)">💰 Buscador de Honorarios</button>
+            <button class="tab" onclick="switchTab('tabuladores', this)">📄 Cargar Tabuladores</button>
+            <button class="tab" onclick="switchTab('informe', this)">📝 Generar Informe Médico</button>
+            <button class="tab" onclick="switchTab('credenciales', this)">📋 Credenciales Procesadas</button>
+        </div>
+
+        <!-- TAB 1: Escáner Decodificador -->
+        <div id="tab-escanner" class="tab-content active">
+            <div class="card highlight">
+                <h3>📸 Escáner Decodificador de Credenciales</h3>
+                <p>Sube una foto de la credencial de seguro del paciente y obtén información instantánea sobre su cobertura.</p>
+                
+                <div class="upload-area" id="upload-area" onclick="document.getElementById('imagen-input').click()">
+                    <div class="feature-icon">📷</div>
+                    <p><strong>Arrastra una imagen aquí o haz clic para seleccionar</strong></p>
+                    <p style="color: #64748b; font-size: 0.9em;">Formato: JPG, PNG (máx. 5MB)</p>
+                    <input type="file" id="imagen-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                </div>
+
+                <div id="preview-area" style="display: none; margin-top: 20px;">
+                    <img id="preview-image" style="max-width: 100%; max-height: 400px; border-radius: 8px; margin-bottom: 15px;">
+                    <button class="button primary" onclick="procesarCredencial()" id="btn-procesar">
+                        Procesar Credencial con IA
+                    </button>
+                </div>
+
+                <div id="resultado-credencial" style="display: none; margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Buscador de Honorarios -->
+        <div id="tab-buscador" class="tab-content">
+            <div class="card">
+                <h3>💰 Buscador Inteligente de Honorarios (Tabulador AI)</h3>
+                <p>Consulta cuánto paga cada aseguradora por un procedimiento médico específico.</p>
+                
+                <div class="form-inline">
+                    <select id="buscador-aseguradora" required>
+                        <option value="">Selecciona Aseguradora</option>
+                        <option value="GNP">GNP</option>
+                        <option value="AXA">AXA</option>
+                        <option value="Seguros Monterrey">Seguros Monterrey</option>
+                        <option value="MetLife">MetLife</option>
+                        <option value="Banorte">Banorte</option>
+                    </select>
+                    <input type="text" id="buscador-plan" placeholder="Nombre del Plan (opcional)">
+                    <input type="text" id="buscador-procedimiento" placeholder="Ej: Apendicectomía laparoscópica" required>
+                    <input type="text" id="buscador-cpt" placeholder="Código CPT (opcional)">
+                    <button class="button primary" onclick="buscarHonorario()">Buscar Honorario</button>
+                </div>
+
+                <div id="resultado-honorario"></div>
+
+                <div style="margin-top: 30px;">
+                    <h4>Consultar Cobertura de Procedimiento</h4>
+                    <div class="form-inline">
+                        <select id="cobertura-aseguradora" required>
+                            <option value="">Selecciona Aseguradora</option>
+                            <option value="GNP">GNP</option>
+                            <option value="AXA">AXA</option>
+                            <option value="Seguros Monterrey">Seguros Monterrey</option>
+                            <option value="MetLife">MetLife</option>
+                            <option value="Banorte">Banorte</option>
+                        </select>
+                        <input type="text" id="cobertura-plan" placeholder="Nombre del Plan (opcional)">
+                        <input type="text" id="cobertura-procedimiento" placeholder="Ej: Cirugía de catarata" required>
+                        <button class="button secondary" onclick="consultarCobertura()">Consultar Cobertura</button>
+                    </div>
+                    <div id="resultado-cobertura"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Cargar Tabuladores -->
+        <div id="tab-tabuladores" class="tab-content">
+            <div class="card">
+                <h3>📄 Cargar Tabuladores PDF</h3>
+                <p>Carga tabuladores médicos y condiciones generales de aseguradoras. El sistema extraerá el texto automáticamente para búsquedas inteligentes.</p>
+                
+                <div class="upload-area" id="upload-pdf-area" onclick="document.getElementById('pdf-input').click()" style="margin-top: 20px;">
+                    <div class="feature-icon">📄</div>
+                    <p><strong>Arrastra un PDF aquí o haz clic para seleccionar</strong></p>
+                    <p style="color: #64748b; font-size: 0.9em;">Formato: PDF (máx. 50MB)</p>
+                    <input type="file" id="pdf-input" accept=".pdf" style="display: none;" onchange="handlePdfUpload(event)">
+                </div>
+
+                <div id="pdf-form-area" style="display: none; margin-top: 20px;">
+                    <h4>Información del Tabulador</h4>
+                    <p style="color: #64748b; font-size: 0.9em; margin-bottom: 15px;">Completa los campos que no se detectaron automáticamente:</p>
+                    
+                    <div class="form-grid">
+                        <div>
+                            <label>Aseguradora *</label>
+                            <select id="tabulador-aseguradora" required>
+                                <option value="">Selecciona o detectada automáticamente</option>
+                                <option value="GNP">GNP</option>
+                                <option value="AXA">AXA</option>
+                                <option value="Seguros Monterrey">Seguros Monterrey</option>
+                                <option value="MetLife">MetLife</option>
+                                <option value="Banorte">Banorte</option>
+                                <option value="Qualitas">Qualitas</option>
+                                <option value="Plan Seguros">Plan Seguros</option>
+                                <option value="Mapfre">Mapfre</option>
+                                <option value="Zurich">Zurich</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Plan (opcional)</label>
+                            <input type="text" id="tabulador-plan" placeholder="Nombre del plan">
+                        </div>
+                        <div>
+                            <label>Tipo de Documento *</label>
+                            <select id="tabulador-tipo" required>
+                                <option value="">Selecciona o detectado automáticamente</option>
+                                <option value="tabulador">Tabulador de Honorarios</option>
+                                <option value="condiciones_generales">Condiciones Generales</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Fecha de Vigencia (opcional)</label>
+                            <input type="date" id="tabulador-vigencia" placeholder="YYYY-MM-DD">
+                        </div>
+                    </div>
+
+                    <div id="tabulador-preview" style="margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 0.9em; color: #64748b;">
+                        <strong>Vista previa:</strong> <span id="tabulador-info"></span>
+                    </div>
+
+                    <button class="button primary" onclick="cargarTabulador()" id="btn-cargar-tabulador" style="margin-top: 20px;">
+                        Cargar Tabulador
+                    </button>
+                </div>
+
+                <div id="resultado-tabulador" style="margin-top: 20px;"></div>
+
+                <div style="margin-top: 40px;">
+                    <h4>📚 Tabuladores Cargados</h4>
+                    <div id="lista-tabuladores">
+                        {% if tabuladores %}
+                            {% for tabulador in tabuladores %}
+                            <div class="credencial-card" style="margin-top: 15px;">
+                                <div class="credencial-header">
+                                    <span class="aseguradora-badge">{{ tabulador.aseguradora }}</span>
+                                    <span style="color: #64748b; font-size: 0.9em;">{{ tabulador.fecha_carga }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <div class="info-label">Tipo:</div>
+                                    <div class="info-value">{{ 'Tabulador' if tabulador.tipo_documento == 'tabulador' else 'Condiciones Generales' }}</div>
+                                </div>
+                                {% if tabulador.plan_nombre %}
+                                <div class="info-row">
+                                    <div class="info-label">Plan:</div>
+                                    <div class="info-value">{{ tabulador.plan_nombre }}</div>
+                                </div>
+                                {% endif %}
+                                {% if tabulador.fecha_vigencia %}
+                                <div class="info-row">
+                                    <div class="info-label">Vigencia:</div>
+                                    <div class="info-value">{{ tabulador.fecha_vigencia }}</div>
+                                </div>
+                                {% endif %}
+                                <div class="info-row">
+                                    <div class="info-label">Archivo:</div>
+                                    <div class="info-value">{{ tabulador.archivo_path }}</div>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <button class="button secondary" onclick="eliminarTabulador({{ tabulador.id }})" style="font-size: 0.85em; padding: 5px 12px;">
+                                        🗑️ Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="text-align: center; color: #64748b; padding: 40px;">
+                                No hay tabuladores cargados aún. Sube un PDF de tabulador para comenzar.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Generar Informe Médico -->
+        <div id="tab-informe" class="tab-content">
+            <div class="card">
+                <h3>📝 Generador de Informe Médico Automático</h3>
+                <p>Genera automáticamente el informe médico para la aseguradora a partir de los datos de la consulta.</p>
+                
+                <div class="form-grid" style="margin-top: 20px;">
+                    <div>
+                        <label>ID de Consulta *</label>
+                        <input type="number" id="informe-consulta-id" placeholder="ID de la consulta" required>
+                    </div>
+                    <div>
+                        <label>ID de Credencial (opcional)</label>
+                        <input type="number" id="informe-credencial-id" placeholder="ID de credencial procesada">
+                    </div>
+                    <div>
+                        <label>Aseguradora *</label>
+                        <select id="informe-aseguradora" required>
+                            <option value="">Selecciona Aseguradora</option>
+                            <option value="GNP">GNP</option>
+                            <option value="AXA">AXA</option>
+                            <option value="Seguros Monterrey">Seguros Monterrey</option>
+                            <option value="MetLife">MetLife</option>
+                            <option value="Banorte">Banorte</option>
+                            <option value="GENÉRICO">Genérico</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Número de Póliza</label>
+                        <input type="text" id="informe-poliza" placeholder="Número de póliza">
+                    </div>
+                    <div>
+                        <label>Procedimiento</label>
+                        <input type="text" id="informe-procedimiento" placeholder="Nombre del procedimiento">
+                    </div>
+                    <div>
+                        <label>Código CPT</label>
+                        <input type="text" id="informe-cpt" placeholder="Código CPT">
+                    </div>
+                    <div>
+                        <label>Código CIE-10</label>
+                        <input type="text" id="informe-cie10" placeholder="Código CIE-10">
+                    </div>
+                    <div>
+                        <label>Nombre del Paciente</label>
+                        <input type="text" id="informe-paciente" placeholder="Nombre completo">
+                    </div>
+                </div>
+
+                <button class="button primary" onclick="generarInforme()" style="margin-top: 20px;">
+                    Generar Informe PDF
+                </button>
+
+                <div id="resultado-informe"></div>
+            </div>
+        </div>
+
+        <!-- TAB 5: Credenciales Procesadas -->
+        <div id="tab-credenciales" class="tab-content">
+            <div class="card">
+                <h3>📋 Credenciales Procesadas</h3>
+                <p>Historial de credenciales de seguro procesadas.</p>
+                
+                <div id="lista-credenciales">
+                    {% if credenciales %}
+                        {% for credencial in credenciales %}
+                        <div class="credencial-card">
+                            <div class="credencial-header">
+                                <span class="aseguradora-badge">{{ credencial.aseguradora }}</span>
+                                <span style="color: #64748b; font-size: 0.9em;">{{ credencial.fecha_procesamiento }}</span>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Paciente:</div>
+                                <div class="info-value">{{ credencial.paciente_nombre or 'N/A' }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Póliza:</div>
+                                <div class="info-value">{{ credencial.numero_poliza }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Plan:</div>
+                                <div class="info-value">{{ credencial.plan_nombre or 'N/A' }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Deducible Estimado:</div>
+                                <div class="info-value">${{ "%.2f"|format(credencial.deducible_estimado or 0) }}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Coaseguro:</div>
+                                <div class="info-value">{{ credencial.coaseguro_porcentaje or 0 }}%</div>
+                            </div>
+                            {% if credencial.hospitales_red %}
+                            <div class="info-row">
+                                <div class="info-label">Hospitales en Red:</div>
+                                <div class="info-value">{{ credencial.hospitales_red }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align: center; color: #64748b; padding: 40px;">
+                            No hay credenciales procesadas aún. Procesa una credencial en la pestaña "Escáner Decodificador".
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let imagenActual = null;
+        let pdfActual = null;
+        let datosDetectadosPDF = null;
+
+        function switchTab(tabName, element) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Mostrar pestaña seleccionada
+            document.getElementById('tab-' + tabName).classList.add('active');
+            if (element) {
+                element.classList.add('active');
+            }
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Por favor selecciona un archivo de imagen válido', 'error');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('La imagen es demasiado grande (máx. 5MB)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagenActual = e.target.result;
+                document.getElementById('preview-image').src = imagenActual;
+                document.getElementById('preview-area').style.display = 'block';
+                document.getElementById('upload-area').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Drag and drop
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const input = document.getElementById('imagen-input');
+                input.files = e.dataTransfer.files;
+                handleImageUpload({ target: input });
+            }
+        });
+
+        async function procesarCredencial() {
+            if (!imagenActual) {
+                showToast('Por favor selecciona una imagen primero', 'error');
+                return;
+            }
+
+            const btnProcesar = document.getElementById('btn-procesar');
+            btnProcesar.disabled = true;
+            btnProcesar.innerHTML = '<span class="loading-spinner"></span> Procesando...';
+
+            try {
+                // Convertir base64 a blob
+                const response = await fetch(imagenActual);
+                const blob = await response.blob();
+
+                const formData = new FormData();
+                formData.append('imagen', blob, 'credencial.jpg');
+
+                const res = await fetch('/api/seguros/procesar_credencial', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    mostrarResultadoCredencial(data.datos);
+                    showToast('Credencial procesada exitosamente', 'success');
+                    
+                    // Recargar credenciales después de un momento
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showToast(data.error || 'Error al procesar credencial', 'error');
+                }
+            } catch (error) {
+                showToast('Error al procesar: ' + error.message, 'error');
+            } finally {
+                btnProcesar.disabled = false;
+                btnProcesar.innerHTML = 'Procesar Credencial con IA';
+            }
+        }
+
+        function mostrarResultadoCredencial(datos) {
+            const resultadoDiv = document.getElementById('resultado-credencial');
+            resultadoDiv.style.display = 'block';
+            resultadoDiv.innerHTML = `
+                <div class="credencial-card">
+                    <div class="credencial-header">
+                        <span class="aseguradora-badge">${datos.aseguradora}</span>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Paciente:</div>
+                        <div class="info-value">${datos.paciente_nombre || 'N/A'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Póliza:</div>
+                        <div class="info-value">${datos.numero_poliza}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Plan:</div>
+                        <div class="info-value">${datos.plan_nombre || 'N/A'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Deducible Estimado:</div>
+                        <div class="info-value">$${datos.deducible_estimado?.toLocaleString('es-MX') || 'N/A'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Coaseguro:</div>
+                        <div class="info-value">${datos.coaseguro_porcentaje || 0}%</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Hospitales en Red:</div>
+                        <div class="info-value">${datos.hospitales_red || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function buscarHonorario() {
+            const aseguradora = document.getElementById('buscador-aseguradora').value;
+            const plan = document.getElementById('buscador-plan').value;
+            const procedimiento = document.getElementById('buscador-procedimiento').value;
+            const cpt = document.getElementById('buscador-cpt').value;
+
+            if (!aseguradora || !procedimiento) {
+                showToast('Aseguradora y procedimiento son requeridos', 'error');
+                return;
+            }
+
+            const resultadoDiv = document.getElementById('resultado-honorario');
+            resultadoDiv.innerHTML = '<p>Cargando...</p>';
+
+            try {
+                const res = await fetch('/api/seguros/buscar_honorario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        aseguradora,
+                        plan_nombre: plan,
+                        procedimiento,
+                        codigo_cpt: cpt
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success && data.resultado) {
+                    const resultado = data.resultado;
+                    if (resultado.monto) {
+                        resultadoDiv.innerHTML = `
+                            <div class="honorario-result">
+                                <h4>${resultado.descripcion}</h4>
+                                <div class="honorario-monto">$${resultado.monto.toLocaleString('es-MX')} ${resultado.moneda || 'MXN'}</div>
+                                <p style="margin-top: 10px; color: #64748b;">
+                                    <strong>Aseguradora:</strong> ${resultado.fuente}<br>
+                                    <strong>Confianza:</strong> ${resultado.confianza || 'media'}<br>
+                                    ${resultado.notas ? '<strong>Notas:</strong> ' + resultado.notas : ''}
+                                </p>
+                            </div>
+                        `;
+                    } else {
+                        resultadoDiv.innerHTML = `
+                            <p style="color: #b91c1c; padding: 15px; background: #fee2e2; border-radius: 8px;">
+                                No se encontró información para este procedimiento. Confianza: ${resultado.confianza || 'baja'}
+                            </p>
+                        `;
+                    }
+                } else {
+                    resultadoDiv.innerHTML = `<p style="color: #b91c1c;">${data.error || 'Error al buscar honorario'}</p>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<p style="color: #b91c1c;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function consultarCobertura() {
+            const aseguradora = document.getElementById('cobertura-aseguradora').value;
+            const plan = document.getElementById('cobertura-plan').value;
+            const procedimiento = document.getElementById('cobertura-procedimiento').value;
+
+            if (!aseguradora || !procedimiento) {
+                showToast('Aseguradora y procedimiento son requeridos', 'error');
+                return;
+            }
+
+            const resultadoDiv = document.getElementById('resultado-cobertura');
+            resultadoDiv.innerHTML = '<p>Cargando...</p>';
+
+            try {
+                const res = await fetch('/api/seguros/consultar_cobertura', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        aseguradora,
+                        plan_nombre: plan,
+                        procedimiento
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success && data.resultado) {
+                    const resultado = data.resultado;
+                    const estilo = resultado.cubierto ? 
+                        'background: #dcfce7; border-left: 4px solid #15803d;' : 
+                        'background: #fee2e2; border-left: 4px solid #b91c1c;';
+                    
+                    resultadoDiv.innerHTML = `
+                        <div style="${estilo} padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4>Cobertura: ${resultado.cubierto ? '✅ SÍ CUBIERTO' : '❌ NO CUBIERTO'}</h4>
+                            ${resultado.requisitos ? `<p><strong>Requisitos:</strong> ${resultado.requisitos}</p>` : ''}
+                            ${resultado.periodo_espera ? `<p><strong>Periodo de Espera:</strong> ${resultado.periodo_espera}</p>` : ''}
+                            ${resultado.exclusiones ? `<p><strong>Exclusiones:</strong> ${resultado.exclusiones}</p>` : ''}
+                            <p style="color: #64748b; font-size: 0.9em; margin-top: 10px;">Confianza: ${resultado.confianza || 'media'}</p>
+                        </div>
+                    `;
+                } else {
+                    resultadoDiv.innerHTML = `<p style="color: #b91c1c;">${data.error || 'Error al consultar cobertura'}</p>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<p style="color: #b91c1c;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function generarInforme() {
+            const consultaId = document.getElementById('informe-consulta-id').value;
+            const credencialId = document.getElementById('informe-credencial-id').value;
+            const aseguradora = document.getElementById('informe-aseguradora').value;
+
+            if (!consultaId || !aseguradora) {
+                showToast('ID de consulta y aseguradora son requeridos', 'error');
+                return;
+            }
+
+            const resultadoDiv = document.getElementById('resultado-informe');
+            resultadoDiv.innerHTML = '<p>Generando informe...</p>';
+
+            try {
+                const res = await fetch('/api/seguros/generar_informe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        consulta_id: consultaId,
+                        credencial_seguro_id: credencialId || null,
+                        aseguradora: aseguradora,
+                        numero_poliza: document.getElementById('informe-poliza').value,
+                        procedimiento: document.getElementById('informe-procedimiento').value,
+                        codigo_cpt: document.getElementById('informe-cpt').value,
+                        codigo_cie10: document.getElementById('informe-cie10').value,
+                        paciente_nombre: document.getElementById('informe-paciente').value
+                    })
+                });
+
+                if (res.ok && res.headers.get('content-type')?.includes('application/pdf')) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Informe_Medico_${new Date().toISOString().split('T')[0]}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    resultadoDiv.innerHTML = '<p style="color: #15803d;">✅ Informe generado y descargado exitosamente</p>';
+                    showToast('Informe generado exitosamente', 'success');
+                } else {
+                    const data = await res.json();
+                    resultadoDiv.innerHTML = `<p style="color: #b91c1c;">${data.error || 'Error al generar informe'}</p>`;
+                }
+            } catch (error) {
+                resultadoDiv.innerHTML = `<p style="color: #b91c1c;">Error: ${error.message}</p>`;
+            }
+        }
+
+        function handlePdfUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('Por favor selecciona un archivo PDF válido', 'error');
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                showToast('El PDF es demasiado grande (máx. 50MB)', 'error');
+                return;
+            }
+
+            pdfActual = file;
+            
+            // Mostrar formulario
+            document.getElementById('pdf-form-area').style.display = 'block';
+            document.getElementById('upload-pdf-area').style.display = 'none';
+            
+            // Procesar PDF para detectar información (primero cargar)
+            mostrarPreviewPdf(file.name);
+        }
+
+        function mostrarPreviewPdf(nombreArchivo) {
+            document.getElementById('tabulador-info').textContent = `Archivo: ${nombreArchivo}`;
+        }
+
+        // Drag and drop para PDF
+        const uploadPdfArea = document.getElementById('upload-pdf-area');
+        uploadPdfArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadPdfArea.classList.add('dragover');
+        });
+        uploadPdfArea.addEventListener('dragleave', () => {
+            uploadPdfArea.classList.remove('dragover');
+        });
+        uploadPdfArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadPdfArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.toLowerCase().endsWith('.pdf')) {
+                const input = document.getElementById('pdf-input');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                input.files = dataTransfer.files;
+                handlePdfUpload({ target: input });
+            }
+        });
+
+        async function cargarTabulador() {
+            if (!pdfActual) {
+                showToast('Por favor selecciona un PDF primero', 'error');
+                return;
+            }
+
+            const aseguradora = document.getElementById('tabulador-aseguradora').value;
+            const tipo = document.getElementById('tabulador-tipo').value;
+
+            if (!aseguradora || !tipo) {
+                showToast('Aseguradora y tipo de documento son requeridos', 'error');
+                return;
+            }
+
+            const btnCargar = document.getElementById('btn-cargar-tabulador');
+            btnCargar.disabled = true;
+            btnCargar.innerHTML = '<span class="loading-spinner"></span> Cargando...';
+
+            try {
+                const formData = new FormData();
+                formData.append('pdf', pdfActual);
+                formData.append('aseguradora', aseguradora);
+                formData.append('plan_nombre', document.getElementById('tabulador-plan').value);
+                formData.append('tipo_documento', tipo);
+                formData.append('fecha_vigencia', document.getElementById('tabulador-vigencia').value);
+
+                const res = await fetch('/api/seguros/cargar_tabulador', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast(data.mensaje || 'Tabulador cargado exitosamente', 'success');
+                    document.getElementById('resultado-tabulador').innerHTML = `
+                        <div style="background: #dcfce7; border-left: 4px solid #15803d; padding: 15px; border-radius: 8px;">
+                            <h4>✅ ${data.mensaje}</h4>
+                            <p><strong>Aseguradora:</strong> ${data.datos.aseguradora}</p>
+                            <p><strong>Plan:</strong> ${data.datos.plan_nombre || 'N/A'}</p>
+                            <p><strong>Tipo:</strong> ${data.datos.tipo_documento === 'tabulador' ? 'Tabulador' : 'Condiciones Generales'}</p>
+                            <p><strong>Páginas:</strong> ${data.datos.num_paginas}</p>
+                        </div>
+                    `;
+                    
+                    // Limpiar formulario
+                    pdfActual = null;
+                    document.getElementById('pdf-input').value = '';
+                    document.getElementById('pdf-form-area').style.display = 'none';
+                    document.getElementById('upload-pdf-area').style.display = 'block';
+                    
+                    // Recargar página después de un momento
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    // Si hay datos detectados, mostrarlos
+                    if (data.datos_detectados) {
+                        datosDetectadosPDF = data.datos_detectados;
+                        mostrarDatosDetectados(data.datos_detectados);
+                    }
+                    showToast(data.error || 'Error al cargar tabulador', 'error');
+                    document.getElementById('resultado-tabulador').innerHTML = `
+                        <div style="background: #fee2e2; border-left: 4px solid #b91c1c; padding: 15px; border-radius: 8px;">
+                            <p><strong>Error:</strong> ${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showToast('Error al cargar: ' + error.message, 'error');
+            } finally {
+                btnCargar.disabled = false;
+                btnCargar.innerHTML = 'Cargar Tabulador';
+            }
+        }
+
+        function mostrarDatosDetectados(datos) {
+            if (datos.aseguradora) {
+                document.getElementById('tabulador-aseguradora').value = datos.aseguradora;
+            }
+            if (datos.tipo_documento) {
+                document.getElementById('tabulador-tipo').value = datos.tipo_documento;
+            }
+            if (datos.plan) {
+                document.getElementById('tabulador-plan').value = datos.plan;
+            }
+            
+            let previewText = `Páginas detectadas: ${datos.num_paginas}`;
+            if (datos.aseguradora) previewText += ` | Aseguradora: ${datos.aseguradora}`;
+            if (datos.tipo_documento) previewText += ` | Tipo: ${datos.tipo_documento}`;
+            document.getElementById('tabulador-info').textContent = previewText;
+        }
+
+        async function eliminarTabulador(tabuladorId) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este tabulador?')) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/seguros/tabulador/${tabuladorId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Tabulador eliminado correctamente', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.error || 'Error al eliminar tabulador', 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show';
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+{% endblock %}

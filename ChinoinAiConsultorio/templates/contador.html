@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+{% block title %}Transacciones fiscales — Hospital Ángeles IA{% endblock %}
+{% block before_header %}
+    <div class="loading-bar" id="loading-bar"></div>
+{% endblock %}
+{% block header_inner %}
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Hospital Ángeles" class="logo">
+{% endblock %}
+{% block extra_head %}{% endblock %}
+{% block content %}
+        <h1>Transacciones fiscales</h1>
+        <p class="page-lead text-small-muted">Control fiscal y clasificación para el consultorio.</p>
+<div class="ha-contador">
+        <section class="contador-grid">
+            <div class="card kpi-card">
+                <span class="kpi-label">Ingresos acumulados</span>
+                <div class="kpi-value" id="kpi-ingresos">${{ "%.2f"|format(stats.ingresos_totales or 0) }}</div>
+                <p>Registrados este periodo</p>
+            </div>
+            <div class="card kpi-card">
+                <span class="kpi-label">Gastos registrados</span>
+                <div class="kpi-value" id="kpi-gastos">${{ "%.2f"|format(stats.gastos_totales or 0) }}</div>
+                <p>Incluye deducibles y no deducibles</p>
+            </div>
+            <div class="card kpi-card">
+                <span class="kpi-label">Utilidad estimada</span>
+                <div class="kpi-value" id="kpi-utilidad">${{ "%.2f"|format(stats.utilidad or 0) }}</div>
+                <p>Con base en movimientos capturados</p>
+            </div>
+            <div class="card kpi-card">
+                <span class="kpi-label">Pendientes de validar</span>
+                <div class="kpi-value" id="kpi-pendientes">{{ stats.pendientes_validacion }}</div>
+                <p>Revisa antes del cierre fiscal</p>
+            </div>
+        </section>
+
+        <section class="card highlight">
+            <div class="stack">
+                <div>
+                    <h3>Panel de trabajo fiscal</h3>
+                    <p>Clasifique, valide y exporte movimientos sin salir del consultorio. Los endpoints del backend están conectados a esta interfaz.</p>
+                </div>
+                <div>
+                    <strong>Documentación:</strong>
+                    <code>MODULO_CONTADOR.md</code> · <code>RESUMEN_IMPLEMENTACION.md</code>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3>Importar desde Excel</h3>
+            <p>Suba un archivo Excel (.xlsx) o CSV con sus transacciones. El sistema validará y clasificará automáticamente.</p>
+            <form id="form-importar-excel" class="form-group">
+                <div class="import-row">
+                    <input type="file" id="archivo-excel" name="archivo" accept=".xlsx,.csv" required class="ha-contador-file">
+                    <button class="button primary" type="submit">Subir e importar</button>
+                </div>
+                <div id="resultado-importacion" class="mt-4" style="display:none;"></div>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="toolbar-row">
+                <h3>Filtros</h3>
+                <div class="cluster">
+                    <button type="button" class="button secondary small" id="btn-template-excel">Descargar plantilla Excel</button>
+                    <button type="button" class="button secondary small" id="btn-limpiar-filtros">Limpiar</button>
+                    <button type="button" class="button primary small" id="btn-exportar-excel">Exportar reporte completo</button>
+                    <button type="button" class="button secondary small" id="btn-exportar">Exportar CSV</button>
+                </div>
+            </div>
+            <form id="filtros-form" class="mt-4">
+                <div class="form-grid">
+                    <div>
+                        <label for="tipo">Tipo</label>
+                        <select name="tipo" id="tipo">
+                            <option value="">Todos</option>
+                            <option value="ingreso">Ingreso</option>
+                            <option value="gasto">Gasto</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="estatus">Estatus</label>
+                        <select name="estatus" id="estatus">
+                            <option value="">Todos</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="aprobado">Aprobado</option>
+                            <option value="rechazado">Rechazado</option>
+                            <option value="ajustado">Ajustado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="fecha_desde">Desde</label>
+                        <input type="date" name="fecha_desde" id="fecha_desde">
+                    </div>
+                    <div>
+                        <label for="fecha_hasta">Hasta</label>
+                        <input type="date" name="fecha_hasta" id="fecha_hasta">
+                    </div>
+                    <div>
+                        <label for="clasificacion">Clasificación</label>
+                        <select name="clasificacion" id="clasificacion">
+                            <option value="">Todas</option>
+                            {% for clasif in clasificaciones_gastos %}
+                            <option value="{{ clasif }}">{{ clasif }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="limite">Límite</label>
+                        <input type="number" name="limite" id="limite" value="100" min="10" max="500">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="button primary" type="submit">Actualizar listado</button>
+                    <button class="button secondary" type="button" id="btn-refrescar-stats">Actualizar KPIs</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="acciones-grid">
+            <article class="card">
+                <h3>Capturar transacción</h3>
+                <p>Automáticamente sugiere clasificación y porcentaje deducible usando la IA integrada.</p>
+                <form id="form-transaccion">
+                    <div class="form-grid">
+                        <div>
+                            <label for="tx-fecha">Fecha</label>
+                            <input type="date" id="tx-fecha" name="fecha" required>
+                        </div>
+                        <div>
+                            <label for="tx-tipo">Tipo</label>
+                            <select id="tx-tipo" name="tipo" required>
+                                <option value="ingreso">Ingreso</option>
+                                <option value="gasto">Gasto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tx-monto">Monto</label>
+                            <input type="number" step="0.01" min="0" id="tx-monto" name="monto" placeholder="2000.00" required>
+                        </div>
+                        <div>
+                            <label for="tx-concepto">Concepto</label>
+                            <input type="text" id="tx-concepto" name="concepto" placeholder="Compra de material" required>
+                        </div>
+                        <div>
+                            <label for="tx-proveedor">Proveedor</label>
+                            <input type="text" id="tx-proveedor" name="proveedor" placeholder="Farmacia ACME">
+                        </div>
+                        <div>
+                            <label for="tx-metodo">Método de pago</label>
+                            <input type="text" id="tx-metodo" name="metodo_pago" placeholder="TC Santander">
+                        </div>
+                        <div>
+                            <label for="tx-forma">Forma de pago (SAT)</label>
+                            <select id="tx-forma" name="forma_pago" required>
+                                <option value="">Seleccionar...</option>
+                                {% for forma in formas_pago %}
+                                <option value="{{ forma }}">{{ forma }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tx-cfdi">UUID CFDI</label>
+                            <input type="text" id="tx-cfdi" name="cfdi_uuid" placeholder="Opcional">
+                        </div>
+                        <div>
+                            <label for="tx-clasificacion">Clasificación Fiscal</label>
+                            <select id="tx-clasificacion" name="clasificacion">
+                                <option value="">Seleccionar...</option>
+                                {% for clasif in clasificaciones_gastos %}
+                                <option value="{{ clasif }}">{{ clasif }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="button secondary" type="button" id="btn-clasificar-ia">Sugerencia de clasificación (IA)</button>
+                        <span id="ia-clasificacion" class="ia-badge hidden"></span>
+                    </div>
+                    <button class="button primary btn-block mt-4" type="submit">Guardar transacción</button>
+                </form>
+            </article>
+
+            <article class="card panel-validacion">
+                <h3>Validar transacción</h3>
+                <p>Seleccione un movimiento en la tabla para cargar los datos.</p>
+                <div id="validacion-empty" class="validacion-placeholder">
+                    No hay transacción seleccionada.
+                </div>
+                <form id="form-validacion" class="hidden">
+                    <p class="field-label">Transacción: <span id="validacion-title"></span></p>
+                    <input type="hidden" id="tx-id-validacion">
+                    <div class="form-grid">
+                        <div>
+                            <label for="validacion-estatus">Estatus</label>
+                            <select id="validacion-estatus" name="estatus" required>
+                                <option value="aprobado">Aprobado</option>
+                                <option value="rechazado">Rechazado</option>
+                                <option value="ajustado">Ajustado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="validacion-clasificacion">Clasificación</label>
+                            <select id="validacion-clasificacion" name="clasificacion" required>
+                                <option value="">Seleccionar...</option>
+                                {% for clasif in clasificaciones_gastos %}
+                                <option value="{{ clasif }}">{{ clasif }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="validacion-deducible">% Deducible</label>
+                            <input type="number" id="validacion-deducible" name="deducible_porcentaje" min="0" max="100" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="validacion-notas">Notas del contador</label>
+                        <textarea id="validacion-notas" name="notas" rows="3"></textarea>
+                    </div>
+                    <button class="button primary btn-block mt-4" type="submit">Confirmar validación</button>
+                </form>
+            </article>
+        </section>
+
+        <section class="card">
+            <div class="toolbar-row">
+                <h3>Transacciones</h3>
+                <span id="total-transacciones" class="text-small-muted">{{ transacciones|length }} registros</span>
+            </div>
+            <div class="table-scroll">
+                <table class="rounded-table" id="tabla-transacciones">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Concepto</th>
+                            <th>Proveedor</th>
+                            <th>Monto</th>
+                            <th>Forma de Pago</th>
+                            <th>Clasificación</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if transacciones %}
+                            {% for t in transacciones %}
+                            <tr data-transaccion="{{ t|tojson|safe }}">
+                                <td>#{{ t.id }}</td>
+                                <td>{{ t.fecha }}</td>
+                                <td><span class="status-pill {{ 'pill-ingreso' if t.tipo == 'ingreso' else 'pill-gasto' }}">{{ t.tipo|upper }}</span></td>
+                                <td>{{ t.concepto }}</td>
+                                <td>{{ t.proveedor or '—' }}</td>
+                                <td>${{ "%.2f"|format(t.monto) }}</td>
+                                <td>{{ t.forma_pago or '—' }}</td>
+                                <td>{{ t.clasificacion_contador or t.clasificacion_ia or 'Sin clasificar' }}</td>
+                                <td>
+                                    <span class="status-pill status-{{ t.estatus_validacion }}">{{ t.estatus_validacion|upper }}</span>
+                                </td>
+                                <td>
+                                    <button class="button secondary small btn-validar" type="button">Validar</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="10" class="table-empty">No hay transacciones registradas</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3>Principales deducciones aprobadas</h3>
+            {% if stats.top_deducibles %}
+            <table class="mini-table">
+                {% for top in stats.top_deducibles %}
+                <tr>
+                    <td>{{ top.clasificacion or 'Sin clasificar' }}</td>
+                    <td class="text-end">${{ "%.2f"|format(top.monto or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>No se han aprobado deducciones aún.</p>
+            {% endif %}
+        </section>
+
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+    <div class="toast" id="toast"></div>
+    <script>
+        const api = {
+            transacciones: "/api/transacciones",
+            stats: "/api/estadisticas_financieras",
+            crear: "/api/transacciones",
+            validar: (id) => `/api/transacciones/${id}/validar`,
+            clasificar: "/api/clasificar_gasto",
+            exportar: "/api/exportar_transacciones",
+            exportarExcel: "/api/contador/exportar-excel",
+            templateExcel: "/api/contador/template-excel",
+            importarExcel: "/api/contador/importar-excel"
+        };
+
+        const initialStats = {{ stats|tojson }};
+        let transaccionesData = {{ transacciones|tojson }};
+        const clasificacionesIngresos = {{ clasificaciones_ingresos|tojson }};
+        const clasificacionesGastos = {{ clasificaciones_gastos|tojson }};
+
+        const refs = {};
+
+        document.addEventListener("DOMContentLoaded", () => {
+            refs.loadingBar = document.getElementById("loading-bar");
+            refs.toast = document.getElementById("toast");
+            refs.filtrosForm = document.getElementById("filtros-form");
+            refs.btnTemplateExcel = document.getElementById("btn-template-excel");
+            refs.btnLimpiar = document.getElementById("btn-limpiar-filtros");
+            refs.btnExportarExcel = document.getElementById("btn-exportar-excel");
+            refs.btnExportar = document.getElementById("btn-exportar");
+            refs.btnRefrescarStats = document.getElementById("btn-refrescar-stats");
+            refs.tableBody = document.querySelector("#tabla-transacciones tbody");
+            refs.totalTransacciones = document.getElementById("total-transacciones");
+            refs.formTransaccion = document.getElementById("form-transaccion");
+            refs.btnClasificarIA = document.getElementById("btn-clasificar-ia");
+            refs.iaBadge = document.getElementById("ia-clasificacion");
+            refs.txClasificacion = document.getElementById("tx-clasificacion");
+            refs.txTipo = document.getElementById("tx-tipo");
+            refs.txFormaPago = document.getElementById("tx-forma");
+            refs.txMonto = document.getElementById("tx-monto");
+            refs.formValidacion = document.getElementById("form-validacion");
+            refs.validacionEmpty = document.getElementById("validacion-empty");
+            refs.validacionTitle = document.getElementById("validacion-title");
+            refs.validacionId = document.getElementById("tx-id-validacion");
+            refs.validacionClasificacion = document.getElementById("validacion-clasificacion");
+            refs.validacionDeducible = document.getElementById("validacion-deducible");
+            refs.validacionNotas = document.getElementById("validacion-notas");
+            refs.validacionEstatus = document.getElementById("validacion-estatus");
+            refs.formImportarExcel = document.getElementById("form-importar-excel");
+            refs.resultadoImportacion = document.getElementById("resultado-importacion");
+
+            renderStats(initialStats || {});
+            renderTransacciones(transaccionesData || []);
+            setDefaultDate();
+
+            refs.filtrosForm.addEventListener("submit", handleFiltrosSubmit);
+            refs.btnTemplateExcel.addEventListener("click", handleDescargarTemplate);
+            refs.btnLimpiar.addEventListener("click", handleLimpiarFiltros);
+            refs.btnExportarExcel.addEventListener("click", handleExportarExcel);
+            refs.btnExportar.addEventListener("click", handleExportar);
+            refs.btnRefrescarStats.addEventListener("click", () => refreshStats(new FormData(refs.filtrosForm)));
+            refs.btnClasificarIA.addEventListener("click", handleClasificacionIA);
+            refs.formTransaccion.addEventListener("submit", handleCrearTransaccion);
+            refs.formValidacion.addEventListener("submit", handleValidacion);
+            refs.formImportarExcel.addEventListener("submit", handleImportarExcel);
+            
+            // Actualizar dropdown de clasificación cuando cambia el tipo
+            if (refs.txTipo) {
+                refs.txTipo.addEventListener("change", actualizarClasificacionesDropdown);
+            }
+            
+            // Validar efectivo > $2000 en tiempo real
+            if (refs.txFormaPago && refs.txMonto) {
+                refs.txFormaPago.addEventListener("change", validarEfectivoEnTiempoReal);
+                refs.txMonto.addEventListener("input", validarEfectivoEnTiempoReal);
+            }
+        });
+        
+        function validarEfectivoEnTiempoReal() {
+            const formaPago = refs.txFormaPago?.value || "";
+            const monto = parseFloat(refs.txMonto?.value || 0);
+            const tipo = refs.txTipo?.value || "gasto";
+            
+            // Ocultar warning previo
+            const warningExistente = document.getElementById("warning-efectivo");
+            if (warningExistente) {
+                warningExistente.remove();
+            }
+            
+            // Mostrar warning si aplica
+            if (tipo === "gasto" && formaPago.startsWith("01 -") && monto > 2000) {
+                const warning = document.createElement("div");
+                warning.id = "warning-efectivo";
+                warning.className = "ha-warning-efectivo";
+                warning.textContent = "Gastos en efectivo mayores a $2,000 no son deducibles según la legislación fiscal mexicana.";
+                refs.txMonto.parentElement.appendChild(warning);
+            }
+        }
+        
+        function actualizarClasificacionesDropdown() {
+            const tipo = refs.txTipo.value;
+            const select = refs.txClasificacion;
+            if (!select) return;
+            
+            const clasificaciones = tipo === "ingreso" ? clasificacionesIngresos : clasificacionesGastos;
+            select.innerHTML = '<option value="">Seleccionar...</option>';
+            clasificaciones.forEach(clasif => {
+                const option = document.createElement("option");
+                option.value = clasif;
+                option.textContent = clasif;
+                select.appendChild(option);
+            });
+        }
+
+        function setLoading(active) {
+            if (!refs.loadingBar) return;
+            if (active) {
+                refs.loadingBar.style.width = "80%";
+            } else {
+                refs.loadingBar.style.width = "100%";
+                setTimeout(() => refs.loadingBar.style.width = "0%", 250);
+            }
+        }
+
+        function showToast(message, type = "info") {
+            if (!refs.toast) return;
+            refs.toast.textContent = message;
+            refs.toast.classList.toggle("toast--error", type === "error");
+            refs.toast.classList.add("show");
+            setTimeout(() => {
+                refs.toast.classList.remove("show");
+                refs.toast.classList.remove("toast--error");
+            }, 3500);
+        }
+
+        function renderStats(stats) {
+            document.getElementById("kpi-ingresos").textContent = currency(stats.ingresos_totales || 0);
+            document.getElementById("kpi-gastos").textContent = currency(stats.gastos_totales || 0);
+            document.getElementById("kpi-utilidad").textContent = currency(stats.utilidad || 0);
+            document.getElementById("kpi-pendientes").textContent = stats.pendientes_validacion || 0;
+        }
+
+        function renderTransacciones(list) {
+            if (!refs.tableBody) return;
+            if (!Array.isArray(list) || list.length === 0) {
+                refs.tableBody.innerHTML = `<tr><td colspan="10" class="table-empty">No hay transacciones para los filtros aplicados</td></tr>`;
+            } else {
+                refs.tableBody.innerHTML = list.map(t => buildRow(t)).join("");
+            }
+            refs.totalTransacciones.textContent = `${list.length} registros`;
+            transaccionesData = list;
+            attachRowHandlers();
+        }
+
+        function buildRow(t) {
+            const tipoClass = t.tipo === "ingreso" ? "pill-ingreso" : "pill-gasto";
+            const estatusClass = `status-${t.estatus_validacion}`;
+            const clasificacion = t.clasificacion_contador || t.clasificacion_ia || "Sin clasificar";
+            const proveedor = t.proveedor || "—";
+            return `
+                <tr data-transaccion='${JSON.stringify(t)}'>
+                    <td>#${t.id}</td>
+                    <td>${t.fecha}</td>
+                    <td><span class="status-pill ${tipoClass}">${t.tipo?.toUpperCase()}</span></td>
+                    <td>${t.concepto}</td>
+                    <td>${proveedor}</td>
+                    <td>${currency(t.monto)}</td>
+                    <td>${t.forma_pago || "—"}</td>
+                    <td>${clasificacion}</td>
+                    <td><span class="status-pill ${estatusClass}">${t.estatus_validacion?.toUpperCase()}</span></td>
+                    <td><button class="button secondary small btn-validar" type="button">Validar</button></td>
+                </tr>
+            `;
+        }
+
+        function attachRowHandlers() {
+            document.querySelectorAll(".btn-validar").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const row = btn.closest("tr");
+                    const data = JSON.parse(row.dataset.transaccion);
+                    openValidacion(data);
+                });
+            });
+        }
+
+        function openValidacion(transaccion) {
+            refs.validacionEmpty.classList.add("hidden");
+            refs.formValidacion.classList.remove("hidden");
+            refs.validacionTitle.textContent = `#${transaccion.id} · ${transaccion.concepto}`;
+            refs.validacionId.value = transaccion.id;
+            refs.validacionClasificacion.value = transaccion.clasificacion_contador || transaccion.clasificacion_ia || "";
+            refs.validacionDeducible.value = transaccion.deducible_porcentaje || 0;
+            refs.validacionNotas.value = transaccion.notas_contador || "";
+            refs.validacionEstatus.value = transaccion.estatus_validacion || "aprobado";
+        }
+
+        function currency(value) {
+            return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value || 0);
+        }
+
+        async function handleFiltrosSubmit(event) {
+            event.preventDefault();
+            const formData = new FormData(refs.filtrosForm);
+            const params = new URLSearchParams(formData);
+            setLoading(true);
+            try {
+                const res = await fetch(`${api.transacciones}?${params.toString()}`);
+                const data = await res.json();
+                renderTransacciones(data);
+                refreshStats(formData);
+                showToast("Listado actualizado");
+            } catch (error) {
+                console.error(error);
+                showToast("No se pudo obtener el listado", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function refreshStats(formData) {
+            const params = new URLSearchParams();
+            const fechaDesde = formData instanceof FormData ? formData.get("fecha_desde") : formData.get?.("fecha_desde");
+            const fechaHasta = formData instanceof FormData ? formData.get("fecha_hasta") : formData.get?.("fecha_hasta");
+            if (fechaDesde) params.append("fecha_desde", fechaDesde);
+            if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+            setLoading(true);
+            try {
+                const res = await fetch(`${api.stats}?${params.toString()}`);
+                const stats = await res.json();
+                renderStats(stats);
+            } catch (error) {
+                console.error(error);
+                showToast("No se pudieron actualizar las métricas", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function handleLimpiarFiltros() {
+            refs.filtrosForm.reset();
+            refs.filtrosForm.dispatchEvent(new Event("submit"));
+        }
+
+        function handleDescargarTemplate() {
+            window.location.href = api.templateExcel;
+        }
+
+        function handleExportarExcel() {
+            const params = new URLSearchParams(new FormData(refs.filtrosForm));
+            window.location.href = `${api.exportarExcel}?${params.toString()}`;
+        }
+
+        function handleExportar() {
+            const params = new URLSearchParams(new FormData(refs.filtrosForm));
+            window.open(`${api.exportar}?${params.toString()}`, "_blank");
+        }
+
+        async function handleClasificacionIA() {
+            const concepto = document.getElementById("tx-concepto").value;
+            const proveedor = document.getElementById("tx-proveedor").value;
+            const monto = document.getElementById("tx-monto").value;
+            if (!concepto) {
+                showToast("Ingresa un concepto para clasificar", "error");
+                return;
+            }
+            setLoading(true);
+            try {
+                const res = await fetch(api.clasificar, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ concepto, proveedor, monto: parseFloat(monto || 0) })
+                });
+                const data = await res.json();
+                refs.iaBadge.textContent = `${data.clasificacion} (${data.deducible_porcentaje}% deducible)`;
+                refs.iaBadge.classList.remove("hidden");
+                // Pre-seleccionar en el dropdown si existe
+                if (refs.txClasificacion && data.clasificacion) {
+                    refs.txClasificacion.value = data.clasificacion;
+                }
+                showToast("Clasificación sugerida lista");
+            } catch (error) {
+                console.error(error);
+                showToast("No se pudo obtener la sugerencia", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleCrearTransaccion(event) {
+            event.preventDefault();
+            const formData = new FormData(refs.formTransaccion);
+            const payload = Object.fromEntries(formData.entries());
+            payload.monto = parseFloat(payload.monto || 0);
+            setLoading(true);
+            try {
+                const res = await fetch(api.crear, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Error al guardar");
+                refs.formTransaccion.reset();
+                setDefaultDate();
+                refs.iaBadge.classList.add("hidden");
+                refs.filtrosForm.dispatchEvent(new Event("submit"));
+                showToast("Transacción creada");
+            } catch (error) {
+                console.error(error);
+                showToast("No se pudo crear la transacción", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleValidacion(event) {
+            event.preventDefault();
+            const transaccionId = refs.validacionId.value;
+            if (!transaccionId) {
+                showToast("Selecciona una transacción", "error");
+                return;
+            }
+            const payload = {
+                estatus: refs.validacionEstatus.value,
+                clasificacion: refs.validacionClasificacion.value,
+                deducible_porcentaje: parseInt(refs.validacionDeducible.value || 0, 10),
+                notas: refs.validacionNotas.value
+            };
+            setLoading(true);
+            try {
+                const res = await fetch(api.validar(transaccionId), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Error al validar");
+                refs.filtrosForm.dispatchEvent(new Event("submit"));
+                showToast("Transacción validada");
+            } catch (error) {
+                console.error(error);
+                showToast("No se pudo validar la transacción", "error");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setDefaultDate() {
+            const today = new Date().toISOString().split("T")[0];
+            const input = document.getElementById("tx-fecha");
+            if (input && !input.value) input.value = today;
+        }
+
+        async function handleImportarExcel(event) {
+            event.preventDefault();
+            const formData = new FormData(refs.formImportarExcel);
+            setLoading(true);
+            refs.resultadoImportacion.style.display = "none";
+            
+            try {
+                const res = await fetch(api.importarExcel, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    throw new Error(data.error || "Error al importar");
+                }
+                
+                // Mostrar resultado
+                let html = `<div style="padding:15px; border-radius:8px; `;
+                if (data.errores && data.errores.length > 0) {
+                    html += `background:#fff3cd; border:2px solid #ffc107;">`;
+                } else {
+                    html += `background:#d1fae5; border:2px solid #10b981;">`;
+                }
+                html += `<h4 style="margin-top:0;">Resultado de la importación</h4>`;
+                html += `<p><strong>${data.mensaje}</strong></p>`;
+                
+                if (data.exitosas > 0) {
+                    html += `<p>✅ <strong>${data.exitosas}</strong> transacciones importadas correctamente</p>`;
+                }
+                if (data.duplicadas > 0) {
+                    html += `<p>⚠️ <strong>${data.duplicadas}</strong> transacciones duplicadas (UUID ya existe)</p>`;
+                }
+                if (data.errores && data.errores.length > 0) {
+                    html += `<p>❌ <strong>${data.errores.length}</strong> errores encontrados:</p>`;
+                    html += `<ul style="margin-top:10px; max-height:200px; overflow-y:auto;">`;
+                    data.errores.slice(0, 10).forEach(err => {
+                        html += `<li>Fila ${err.fila}: ${err.error}</li>`;
+                    });
+                    if (data.errores.length > 10) {
+                        html += `<li>... y ${data.errores.length - 10} errores más</li>`;
+                    }
+                    html += `</ul>`;
+                }
+                html += `</div>`;
+                
+                refs.resultadoImportacion.innerHTML = html;
+                refs.resultadoImportacion.style.display = "block";
+                
+                // Actualizar tabla y KPIs si hubo importaciones exitosas
+                if (data.exitosas > 0) {
+                    refs.filtrosForm.dispatchEvent(new Event("submit"));
+                    refreshStats(new FormData(refs.filtrosForm));
+                    showToast(`${data.exitosas} transacciones importadas correctamente`);
+                }
+                
+                // Limpiar formulario
+                refs.formImportarExcel.reset();
+                
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || "No se pudo importar el archivo", "error");
+                refs.resultadoImportacion.innerHTML = `<div style="padding:15px; background:#fee2e2; border:2px solid #ef4444; border-radius:8px; color:#991b1b;"><strong>Error:</strong> ${error.message}</div>`;
+                refs.resultadoImportacion.style.display = "block";
+            } finally {
+                setLoading(false);
+            }
+        }
+    </script>
+{% endblock %}

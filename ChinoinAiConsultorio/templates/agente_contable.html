@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Agente Contable — Hospital Ángeles IA{% endblock %}
+{% block extra_head %}{% endblock %}
+{% block content %}
+<h1>Agente Contable</h1>
+<p class="page-lead text-small-muted">Asistente fiscal y SAT para médicos. Consultas fiscales y administrativas.</p>
+<div class="card callout-navy card--flat" role="note">
+    <p class="text-small-muted no-margin">El Agente Contable integra la lógica fiscal del proyecto (LISR, CFDI, calendario SAT). Para capturar y validar movimientos en tabla, use <a href="/contador">Transacciones fiscales</a>.</p>
+</div>
+<div class="ha-ac-layout">
+    <div class="ha-ac-chat">
+        <div class="ha-ac-messages" id="ac-messages" aria-live="polite"></div>
+        <div class="ha-ac-input-row">
+            <label for="ac-input" class="visually-hidden">Mensaje para el agente</label>
+            <textarea id="ac-input" placeholder="Ej.: ¿Puedo deducir el arrendamiento de mi consultorio?" rows="2"></textarea>
+            <button type="button" class="button primary" id="ac-send">Enviar</button>
+        </div>
+    </div>
+    <aside class="ha-ac-side">
+        <div class="card">
+            <h3>Sesión</h3>
+            <button type="button" class="button secondary btn-block" id="ac-reset">Nueva conversación</button>
+        </div>
+        <div class="card info">
+            <h3>Ámbito</h3>
+            <p class="text-small-muted">Fiscalidad mexicana, facturación, deducciones médicas y buenas prácticas SAT. No sustituye asesoría personalizada ni dictamen del SAT.</p>
+        </div>
+    </aside>
+</div>
+<script>
+(function () {
+    const box = document.getElementById('ac-messages');
+    const input = document.getElementById('ac-input');
+    const sendBtn = document.getElementById('ac-send');
+    const resetBtn = document.getElementById('ac-reset');
+
+    function addBubble(text, role) {
+        const d = document.createElement('div');
+        d.className = 'ha-ac-bubble ' + role;
+        d.textContent = text;
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function postChat(message, reset) {
+        const r = await fetch('/api/agente-contable/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: message || '', reset: !!reset })
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            addBubble(data.error || 'Error al contactar al agente.', 'err');
+            return;
+        }
+        if (reset) {
+            box.innerHTML = '';
+            if (data.reply) addBubble(data.reply, 'model');
+            return;
+        }
+        addBubble(data.reply || '(sin respuesta)', 'model');
+    }
+
+    sendBtn.addEventListener('click', async () => {
+        const t = input.value.trim();
+        if (!t) return;
+        addBubble(t, 'user');
+        input.value = '';
+        sendBtn.disabled = true;
+        try {
+            await postChat(t, false);
+        } finally {
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click();
+        }
+    });
+
+    resetBtn.addEventListener('click', async () => {
+        box.innerHTML = '';
+        resetBtn.disabled = true;
+        try {
+            await postChat('', true);
+            addBubble('Nueva conversación iniciada. ¿En qué puedo ayudarte?', 'model');
+        } finally {
+            resetBtn.disabled = false;
+        }
+    });
+
+    addBubble('Soy el Agente Contable de Hospital Ángeles. Pregúntame por deducciones, facturación o calendario fiscal.', 'model');
+})();
+</script>
+{% endblock %}

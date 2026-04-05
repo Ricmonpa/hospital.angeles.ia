@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug SOAP - Chinoin AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #FF6B4A;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        button {
+            background: #FF6B4A;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #ff8566;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .success {
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            border-left: 4px solid #dc3545;
+        }
+        .debug-log {
+            background: #2d2d2d;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .raw-response {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug SOAP Generator</h1>
+        <p>Pega una transcripción de prueba para ver qué responde Gemini:</p>
+        
+        <textarea id="transcripcion" placeholder="Pega aquí la transcripción de una consulta médica...">Médico: Buenos días, ¿cómo se encuentra?
+Paciente: Doctor, tengo mucho dolor de estómago desde ayer.
+Médico: ¿Qué tipo de dolor? ¿Punzante, ardor?
+Paciente: Es como ardor, aquí en la boca del estómago.
+Médico: ¿Ha comido algo irritante?
+Paciente: Sí, comí tacos muy picantes anoche.
+Médico: Déjeme revisarlo. Veo inflamación en el epigastrio. Parece gastritis aguda.
+Paciente: ¿Es grave doctor?
+Médico: No, con tratamiento mejorará. Le voy a recetar omeprazol 20mg cada 12 horas por 7 días, y ranitidina si el dolor es muy fuerte. Evite picante, café y alcohol.
+Paciente: Entendido doctor, gracias.</textarea>
+        
+        <button onclick="testSoap()">🧪 Probar Generación de SOAP</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        async function testSoap() {
+            const transcripcion = document.getElementById('transcripcion').value;
+            const resultadoDiv = document.getElementById('resultado');
+            
+            if (!transcripcion.trim()) {
+                alert('Por favor ingresa una transcripción');
+                return;
+            }
+            
+            resultadoDiv.innerHTML = '<p>⏳ Procesando con Gemini...</p>';
+            
+            try {
+                const response = await fetch('/api/test_soap_debug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ transcripcion })
+                });
+                
+                const data = await response.json();
+                
+                let html = '';
+                
+                if (data.success) {
+                    html = '<div class="result success">';
+                    html += '<h3>✅ SUCCESS - SOAP Generado Correctamente</h3>';
+                    html += '<h4>Resultado:</h4>';
+                    html += '<pre>' + JSON.stringify(data.resultado, null, 2) + '</pre>';
+                } else {
+                    html = '<div class="result error">';
+                    html += '<h3>❌ ERROR - Falló el parsing de JSON</h3>';
+                    html += '<p><strong>Error:</strong> ' + data.error + '</p>';
+                }
+                
+                html += '<h4>📋 Debug Log:</h4>';
+                html += '<div class="debug-log">';
+                data.debug_log.forEach(log => {
+                    html += log + '\n';
+                });
+                html += '</div>';
+                
+                html += '<h4>📄 Respuesta Raw de Gemini:</h4>';
+                html += '<div class="raw-response">' + (data.raw_response || 'No response') + '</div>';
+                
+                html += '</div>';
+                
+                resultadoDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultadoDiv.innerHTML = '<div class="result error"><h3>❌ Error de Red</h3><p>' + error.message + '</p></div>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+.env.txt
+.env.*.local
+
+# SQLite (demo / local; do not commit DBs)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE / local tooling
+.vscode/
+.idea/
+.claude/
+
+# Replit / local agent state
+.local/
+**/.local/
+
+# macOS resource forks / junk
+._*
+**/._*
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Data
+data/*.db
+data/*.sqlite
+
+# Playwright
+pw-browsers/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# SAT Portal data (sensitive - contains taxpayer info)
+data/sat_downloads/
+data/sat_screenshots/
+data/sat_audit/

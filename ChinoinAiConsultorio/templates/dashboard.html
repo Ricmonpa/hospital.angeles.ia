@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Hospital Ángeles IA{% endblock %}
+{% block content %}
+        <h1>Bienvenido, Dr./Dra.</h1>
+        
+        <div class="card highlight">
+            <h3>Empieza ahora</h3>
+            <p>Automatiza notas clínicas en segundos con inteligencia artificial.</p>
+            <div class="cluster cluster--center mt-4">
+                <a href="/transcripcion" class="button primary">Iniciar transcripción de consulta</a>
+                <a href="/agente-contable" class="button secondary">Agente Contable (fiscal)</a>
+                {% if stats.total_consultas > 0 %}
+                <a href="/historial" class="button secondary">Ver historial ({{ stats.total_consultas }})</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card alert">
+                <h3>Alertas de cumplimiento</h3>
+                <ul class="alert-list">
+                    <li><strong>(2) Facturas pendientes de clasificar</strong></li>
+                    <li><strong>(1) Aviso de privacidad desactualizado</strong></li>
+                    <li><strong>(1) Consentimiento pendiente de revisión</strong></li>
+                </ul>
+            </div>
+
+            <div class="card stats">
+                <h3>Estadísticas de consultas</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total consultas:</span>
+                    <span class="stat-value">{{ stats.total_consultas }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Días activos:</span>
+                    <span class="stat-value">{{ stats.dias_activos }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Duración promedio:</span>
+                    <span class="stat-value">{{ stats.duracion_promedio }} min</span>
+                </div>
+                {% if stats.top_diagnosticos %}
+                <div class="stat-inline-list">
+                    <strong>Diagnósticos frecuentes</strong>
+                    <ul>
+                        {% for diag in stats.top_diagnosticos[:3] %}
+                        <li>{{ diag.diagnostico }} ({{ diag.frecuencia }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card info">
+            <h3>Suite integrada</h3>
+            <p>Esta suite integra consulta, fiscalidad (Agente Contable y transacciones), seguros, legal y farmacovigilancia en un solo entorno.</p>
+            <a href="https://www.hospitalangeles.com" target="_blank" rel="noopener noreferrer" class="button secondary">Sitio Hospital Ángeles</a>
+        </div>
+
+        <div class="card features">
+            <h3>Funcionalidades</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>Transcripción IA</h4>
+                    <p>Diálogo de consulta a notas SOAP estructuradas</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Agente Contable</h4>
+                    <p>Asistente fiscal LISR / SAT y enlace a transacciones</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Cumplimiento NOM</h4>
+                    <p>Consentimientos y avisos de privacidad</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Transacciones fiscales</h4>
+                    <p>Clasificación, validación y exportación</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Seguros</h4>
+                    <p>Pólizas, honorarios e informes</p>
+                </div>
+                <div class="feature-item">
+                    <h4>Asistente legal</h4>
+                    <p>Contratos, auditoría y alertas</p>
+                </div>
+            </div>
+        </div>
+{% endblock %}

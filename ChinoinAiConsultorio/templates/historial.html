@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}Historial — Hospital Ángeles IA{% endblock %}
+{% block extra_head %}{% endblock %}
+{% block content %}
+        <h1>Historial de consultas</h1>
+        <p class="page-lead text-small-muted">Gestione y revise consultas anteriores.</p>
+        <div class="search-container">
+            <h3>Buscar consultas</h3>
+            <input type="text" id="searchInput" class="search-input" 
+                   placeholder="Buscar por diagnóstico, síntomas, tratamiento...">
+            <button type="button" class="button primary" onclick="buscarConsultas()">Buscar</button>
+            <button type="button" class="button secondary" onclick="mostrarTodas()">Mostrar todas</button>
+        </div>
+
+        <div id="consultasContainer">
+            {% if consultas %}
+                {% for consulta in consultas %}
+                <div class="consulta-item" data-id="{{ consulta.id }}">
+                    <div class="consulta-header">
+                        <div>
+                            <strong>Consulta #{{ consulta.id }}</strong>
+                            <div class="consulta-fecha">{{ consulta.fecha_consulta[:16] }}</div>
+                        </div>
+                        {% if consulta.diagnostico %}
+                        <div class="consulta-diagnostico">{{ consulta.diagnostico }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="consulta-preview">
+                        {% if consulta.soap_subjetivo %}
+                            <strong>Síntomas:</strong> {{ consulta.soap_subjetivo[:150] }}{% if consulta.soap_subjetivo|length > 150 %}...{% endif %}
+                        {% else %}
+                            <strong>Transcripción:</strong> {{ consulta.transcripcion[:150] }}{% if consulta.transcripcion|length > 150 %}...{% endif %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="consulta-acciones">
+                        <button type="button" class="button primary small" onclick="verConsulta({{ consulta.id }})">
+                            Ver completa
+                        </button>
+                        <button type="button" class="button secondary small" onclick="editarConsulta({{ consulta.id }})">
+                            Editar
+                        </button>
+                        <button type="button" class="button secondary small" onclick="copiarSOAP({{ consulta.id }})">
+                            Copiar SOAP
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-consultas empty-state">
+                    <h3>No hay consultas registradas</h3>
+                    <p>Las consultas que procese aparecerán aquí para futuras referencias.</p>
+                    <a href="/transcripcion" class="button primary">Procesar primera consulta</a>
+                </div>
+            {% endif %}
+        </div>
+
+    <!-- Modal para ver/editar consulta -->
+    <div id="consultaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Consulta Completa</h2>
+                <span class="close" onclick="cerrarModal()">&times;</span>
+            </div>
+            
+            <div id="modalContent">
+                <!-- El contenido se carga dinámicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="button primary" id="guardarBtn" onclick="guardarCambios()" style="display: none;">
+                    💾 Guardar Cambios
+                </button>
+                <button class="button secondary" onclick="cerrarModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+    <script>
+        let consultaActual = null;
+        let modoEdicion = false;
+
+        async function buscarConsultas() {
+            const termino = document.getElementById('searchInput').value.trim();
+            if (!termino) {
+                alert('Por favor ingresa un término de búsqueda');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/buscar_consultas?q=${encodeURIComponent(termino)}`);
+                const consultas = await response.json();
+                mostrarConsultas(consultas);
+            } catch (error) {
+                console.error('Error al buscar:', error);
+                alert('Error al realizar la búsqueda');
+            }
+        }
+
+        function mostrarTodas() {
+            document.getElementById('searchInput').value = '';
+            location.reload();
+        }
+
+        function mostrarConsultas(consultas) {
+            const container = document.getElementById('consultasContainer');
+            
+            if (consultas.length === 0) {
+                container.innerHTML = `
+                    <div class="no-consultas">
+                        <h3>🔍 No se encontraron resultados</h3>
+                        <p>Intenta con otros términos de búsqueda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = consultas.map(consulta => `
+                <div class="consulta-item" data-id="${consulta.id}">
+                    <div class="consulta-header">
+                        <div>
+                            <strong>Consulta #${consulta.id}</strong>
+                            <div class="consulta-fecha">${consulta.fecha_consulta.substring(0, 16)}</div>
+                        </div>
+                        ${consulta.diagnostico ? `<div class="consulta-diagnostico">${consulta.diagnostico}</div>` : ''}
+                    </div>
+                    
+                    <div class="consulta-preview">
+                        ${consulta.soap_subjetivo ? 
+                            `<strong>Síntomas:</strong> ${consulta.soap_subjetivo.substring(0, 150)}${consulta.soap_subjetivo.length > 150 ? '...' : ''}` :
+                            `<strong>Transcripción:</strong> ${consulta.transcripcion.substring(0, 150)}${consulta.transcripcion.length > 150 ? '...' : ''}`
+                        }
+                    </div>
+                    
+                    <div class="consulta-acciones">
+                        <button class="button primary small" onclick="verConsulta(${consulta.id})">
+                            👁️ Ver Completa
+                        </button>
+                        <button class="button secondary small" onclick="editarConsulta(${consulta.id})">
+                            ✏️ Editar
+                        </button>
+                        <button class="button secondary small" onclick="copiarSOAP(${consulta.id})">
+                            📋 Copiar SOAP
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function verConsulta(id) {
+            await cargarConsulta(id, false);
+        }
+
+        async function editarConsulta(id) {
+            await cargarConsulta(id, true);
+        }
+
+        async function cargarConsulta(id, editar = false) {
+            try {
+                const response = await fetch(`/api/consulta/${id}`);
+                const consulta = await response.json();
+                
+                consultaActual = consulta;
+                modoEdicion = editar;
+                
+                document.getElementById('modalTitle').textContent = 
+                    editar ? `Editar Consulta #${id}` : `Consulta #${id}`;
+                
+                const content = `
+                    <div class="soap-section">
+                        <h4>📄 Transcripción</h4>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                            ${consulta.transcripcion || 'No disponible'}
+                        </div>
+                    </div>
+                    
+                    <div class="soap-section">
+                        <h4>📋 Notas SOAP</h4>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>S (Subjetivo):</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="soap_subjetivo" ${editar ? 'contenteditable="true"' : ''}>
+                                ${consulta.soap_subjetivo || 'No disponible'}
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>O (Objetivo):</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="soap_objetivo" ${editar ? 'contenteditable="true"' : ''}>
+                                ${consulta.soap_objetivo || 'No disponible'}
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>A (Análisis):</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="soap_analisis" ${editar ? 'contenteditable="true"' : ''}>
+                                ${consulta.soap_analisis || 'No disponible'}
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>P (Plan):</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="soap_plan" ${editar ? 'contenteditable="true"' : ''}>
+                                ${consulta.soap_plan || 'No disponible'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="soap-section">
+                        <h4>🔍 Información Adicional</h4>
+                        <div style="margin: 10px 0;">
+                            <strong>Diagnóstico:</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="diagnostico" ${editar ? 'contenteditable="true"' : ''}>
+                                ${consulta.diagnostico || 'No especificado'}
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 10px 0;">
+                            <strong>Notas Adicionales:</strong>
+                            <div class="${editar ? 'editable' : ''}" data-field="notas_adicionales" ${editar ? 'contenteditable="true"' : ''} style="min-height: 80px;">
+                                ${consulta.notas_adicionales || 'Sin notas adicionales'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('modalContent').innerHTML = content;
+                document.getElementById('guardarBtn').style.display = editar ? 'inline-block' : 'none';
+                document.getElementById('consultaModal').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error al cargar consulta:', error);
+                alert('Error al cargar la consulta');
+            }
+        }
+
+        async function guardarCambios() {
+            if (!consultaActual || !modoEdicion) return;
+            
+            const datos = {};
+            const editables = document.querySelectorAll('.editable[data-field]');
+            
+            editables.forEach(el => {
+                const field = el.getAttribute('data-field');
+                datos[field] = el.textContent.trim();
+            });
+            
+            try {
+                const response = await fetch(`/api/consulta/${consultaActual.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(datos)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Consulta actualizada correctamente');
+                    cerrarModal();
+                    location.reload(); // Recargar para mostrar cambios
+                } else {
+                    alert('Error al guardar los cambios');
+                }
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                alert('Error al guardar los cambios');
+            }
+        }
+
+        async function copiarSOAP(id) {
+            try {
+                const response = await fetch(`/api/consulta/${id}`);
+                const consulta = await response.json();
+                
+                const soapText = `S (Subjetivo): ${consulta.soap_subjetivo || 'No disponible'}
+
+O (Objetivo): ${consulta.soap_objetivo || 'No disponible'}
+
+A (Análisis): ${consulta.soap_analisis || 'No disponible'}
+
+P (Plan): ${consulta.soap_plan || 'No disponible'}`;
+                
+                await navigator.clipboard.writeText(soapText);
+                alert('✅ Notas SOAP copiadas al portapapeles');
+            } catch (error) {
+                console.error('Error al copiar:', error);
+                alert('Error al copiar las notas SOAP');
+            }
+        }
+
+        function cerrarModal() {
+            document.getElementById('consultaModal').style.display = 'none';
+            consultaActual = null;
+            modoEdicion = false;
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('consultaModal');
+            if (event.target == modal) {
+                cerrarModal();
+            }
+        }
+
+        // Búsqueda con Enter
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarConsultas();
+            }
+        });
+    </script>
+{% endblock %}

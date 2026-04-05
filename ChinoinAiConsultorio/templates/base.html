@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hospital Ángeles IA{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#main-content">Ir al contenido principal</a>
+{% block before_header %}{% endblock %}
+<header>
+    <div class="header-content">
+        {% block header_inner %}
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Hospital Ángeles" class="logo">
+        {% endblock %}
+    </div>
+</header>
+{% block main_nav %}
+{% set p = request.path %}
+<nav role="navigation" aria-label="Principal">
+    <a href="/" class="{{ 'active' if p == '/' else '' }}">Dashboard</a>
+    <a href="/transcripcion" class="{{ 'active' if p.startswith('/transcripcion') else '' }}">Transcripción (IA)</a>
+    <a href="/historial" class="{{ 'active' if p.startswith('/historial') else '' }}">Historial</a>
+    <a href="/agente-contable" class="{{ 'active' if p.startswith('/agente-contable') else '' }}">Agente Contable</a>
+    <a href="/contador" class="{{ 'active' if p.startswith('/contador') else '' }}">Transacciones fiscales</a>
+    <a href="/seguros" class="{{ 'active' if p.startswith('/seguros') else '' }}">Seguros</a>
+    <a href="/legal" class="{{ 'active' if p == '/legal' else '' }}">Asistente legal</a>
+    <a href="/legal/abogado" class="{{ 'active' if p.startswith('/legal/abogado') else '' }}">Portal abogado</a>
+    <a href="/farmacovigilancia" class="{{ 'active' if p.startswith('/farmacovigilancia') else '' }}">Farmacovigilancia</a>
+</nav>
+{% endblock %}
+<main id="main-content">
+    {% block content %}{% endblock %}
+</main>
+{% block page_scripts %}{% endblock %}
+{% block footer %}
+<footer>
+    <p>&copy; 2026 Hospital Ángeles — Suite IA para médicos | Gemini AI</p>
+</footer>
+{% endblock %}
+</body>
+</html>

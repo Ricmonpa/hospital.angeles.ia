@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Portal abogado — Hospital Ángeles IA{% endblock %}
+{% block extra_head %}
+    <style>
+        .abogado-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1d1d1f 100%);
+            color: #f1f5f9;
+            border: none;
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top right, rgba(var(--ha-accent-rgb),0.35), transparent 60%);
+            pointer-events: none;
+        }
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        .kpi-label {
+            color: #cbd5f5;
+            font-size: 0.9em;
+            letter-spacing: 0.08em;
+        }
+        .cumplimiento-gauge {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .gauge-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #10b981 0% {{ stats.porcentaje_cumplimiento_nom }}%,
+                #e5e7eb {{ stats.porcentaje_cumplimiento_nom }}% 100%
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .plantilla-editor {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+        }
+        .plantilla-editor textarea {
+            width: 100%;
+            min-height: 300px;
+            font-family: 'Courier New', monospace;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .alertas-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .alerta-item {
+            padding: 1rem;
+            border-left: 4px solid;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            background: white;
+        }
+        .alerta-item.critica { border-color: #dc2626; background: #fee2e2; }
+        .alerta-item.alta { border-color: #f59e0b; background: #fef3c7; }
+        .alerta-item.media { border-color: #3b82f6; background: #dbeafe; }
+        .alerta-item.baja { border-color: #10b981; background: #d1fae5; }
+        .tab-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: var(--ha-accent);
+            border-bottom: 3px solid var(--ha-accent);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+        <h2>⚖️ Dashboard de Cumplimiento</h2>
+        
+        <!-- Estadísticas de Cumplimiento -->
+        <div class="abogado-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Cumplimiento NOM-004</div>
+                <div class="cumplimiento-gauge">
+                    <div class="gauge-circle">
+                        {{ stats.porcentaje_cumplimiento_nom }}%
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Consultas</div>
+                <div class="kpi-value">{{ stats.total_consultas }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Con Consentimiento</div>
+                <div class="kpi-value">{{ stats.consultas_con_consentimiento }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Alertas Activas</div>
+                <div class="kpi-value">{{ stats.alertas_activas }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Contratos por Vencer</div>
+                <div class="kpi-value">{{ stats.contratos_por_vencer }}</div>
+            </div>
+        </div>
+        
+        <!-- Alertas por Severidad -->
+        {% if stats.alertas_por_severidad %}
+        <div class="card">
+            <h3>📊 Alertas por Severidad</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                {% for severidad, cantidad in stats.alertas_por_severidad.items() %}
+                <div style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                    <strong>{{ severidad|upper }}:</strong> {{ cantidad }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Tabs para diferentes secciones -->
+        <div class="card">
+            <div class="tab-container">
+                <button class="tab active" onclick="mostrarTab('alertas')">🚨 Alertas</button>
+                <button class="tab" onclick="mostrarTab('plantillas')">📄 Plantillas</button>
+                <button class="tab" onclick="mostrarTab('auditoria')">🔍 Auditoría</button>
+            </div>
+            
+            <!-- Tab: Alertas -->
+            <div id="tab-alertas" class="tab-content active">
+                <h3>Alertas de Cumplimiento</h3>
+                <button class="button primary" onclick="ejecutarAuditoria()" style="margin-bottom: 1rem;">
+                    🔍 Ejecutar Auditoría de Cumplimiento
+                </button>
+                <div class="alertas-list">
+                    {% if alertas %}
+                        {% for alerta in alertas %}
+                        <div class="alerta-item {{ alerta.severidad }}">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4>{{ alerta.titulo }}</h4>
+                                    <p>{{ alerta.descripcion }}</p>
+                                    <small>Detectada: {{ alerta.fecha_deteccion }}</small>
+                                </div>
+                                <button class="button secondary" onclick="resolverAlerta({{ alerta.id }})">
+                                    Resolver
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No hay alertas activas. ✅ Todo en orden.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Tab: Plantillas -->
+            <div id="tab-plantillas" class="tab-content">
+                <h3>Gestor de Plantillas Legales</h3>
+                <button class="button primary" onclick="mostrarFormPlantilla()" style="margin-bottom: 1rem;">
+                    ➕ Nueva Plantilla
+                </button>
+                
+                <div id="formPlantilla" style="display: none; margin-bottom: 2rem;">
+                    <form id="plantillaForm" class="plantilla-editor">
+                        <div class="form-grid">
+                            <div>
+                                <label>Tipo de Documento *</label>
+                                <select id="tipo_documento" name="tipo_documento" required>
+                                    <option value="consentimiento_informado">Consentimiento Informado</option>
+                                    <option value="contrato_laboral">Contrato Laboral</option>
+                                    <option value="nda">NDA / Confidencialidad</option>
+                                    <option value="aviso_privacidad">Aviso de Privacidad</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Nombre de la Plantilla *</label>
+                                <input type="text" id="nombre_plantilla" name="nombre_plantilla" required>
+                            </div>
+                            <div>
+                                <label>Procedimiento (opcional)</label>
+                                <input type="text" id="procedimiento" name="procedimiento" 
+                                       placeholder="Ej: Biopsia de Piel">
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <label>Contenido de la Plantilla *</label>
+                            <textarea id="contenido_template" name="contenido_template" required
+                                      placeholder="Usa [NOMBRE_PACIENTE], [PROCEDIMIENTO], [MEDICO], [FECHA] como placeholders"></textarea>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <label>Aprobado por</label>
+                            <input type="text" id="aprobado_por" name="aprobado_por" 
+                                   placeholder="Nombre del abogado">
+                        </div>
+                        <button type="submit" class="button primary" style="margin-top: 1rem;">
+                            Guardar Plantilla
+                        </button>
+                        <button type="button" class="button secondary" onclick="ocultarFormPlantilla()">
+                            Cancelar
+                        </button>
+                    </form>
+                </div>
+                
+                <div>
+                    <h4>Plantillas Existentes:</h4>
+                    <table class="rounded-table">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nombre</th>
+                                <th>Procedimiento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if plantillas %}
+                                {% for plantilla in plantillas %}
+                                <tr>
+                                    <td>{{ plantilla.tipo_documento }}</td>
+                                    <td>{{ plantilla.nombre_plantilla }}</td>
+                                    <td>{{ plantilla.procedimiento or 'Genérica' }}</td>
+                                    <td>
+                                        <span class="status-pill status-aprobado">
+                                            {{ 'Activa' if plantilla.activo else 'Inactiva' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="button secondary" onclick="editarPlantilla({{ plantilla.id }})">
+                                            Editar
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5">No hay plantillas. Crea una nueva.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Tab: Auditoría -->
+            <div id="tab-auditoria" class="tab-content">
+                <h3>Bitácora de Auditoría</h3>
+                <p>Registro inmutable de accesos y acciones en el sistema.</p>
+                <button class="button primary" onclick="cargarLogAuditoria()">
+                    🔄 Cargar Log de Auditoría
+                </button>
+                <div id="logAuditoria" style="margin-top: 1rem;">
+                    <p>Haz clic en "Cargar Log" para ver el registro de auditoría.</p>
+                </div>
+            </div>
+        </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+    <script>
+        function mostrarTab(tabName) {
+            // Ocultar todos los tabs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Mostrar el tab seleccionado
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+        
+        function ejecutarAuditoria() {
+            if (!confirm('¿Ejecutar auditoría de cumplimiento? Esto revisará todas las consultas y creará alertas si faltan consentimientos.')) {
+                return;
+            }
+            
+            fetch('/api/legal/auditoria_cumplimiento', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`✅ Auditoría completada.\n\nConsultas revisadas: ${data.total_consultas_revisadas}\nAlertas creadas: ${data.alertas_creadas}`);
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => alert('Error: ' + error.message));
+        }
+        
+        function resolverAlerta(alertaId) {
+            const notas = prompt('Notas de resolución:');
+            if (notas === null) return;
+            
+            fetch(`/api/legal/alertas/${alertaId}/resolver`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resuelto_por: 'abogado',
+                    notas: notas
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Alerta resuelta');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => alert('Error: ' + error.message));
+        }
+        
+        function mostrarFormPlantilla() {
+            document.getElementById('formPlantilla').style.display = 'block';
+        }
+        
+        function ocultarFormPlantilla() {
+            document.getElementById('formPlantilla').style.display = 'none';
+            document.getElementById('plantillaForm').reset();
+        }
+        
+        document.getElementById('plantillaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                tipo_documento: document.getElementById('tipo_documento').value,
+                nombre_plantilla: document.getElementById('nombre_plantilla').value,
+                procedimiento: document.getElementById('procedimiento').value,
+                contenido_template: document.getElementById('contenido_template').value,
+                aprobado_por: document.getElementById('aprobado_por').value,
+                fecha_aprobacion: new Date().toISOString().split('T')[0]
+            };
+            
+            try {
+                const response = await fetch('/api/legal/plantillas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Plantilla guardada correctamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+        
+        function editarPlantilla(plantillaId) {
+            alert('Funcionalidad de edición en desarrollo. Por ahora, crea una nueva plantilla.');
+        }
+        
+        function cargarLogAuditoria() {
+            // En producción, implementar endpoint para obtener log de auditoría
+            document.getElementById('logAuditoria').innerHTML = `
+                <p style="color: #666;">Funcionalidad de log de auditoría en desarrollo.</p>
+                <p>El log registra automáticamente todos los accesos a documentos y expedientes.</p>
+            `;
+        }
+    </script>
+{% endblock %}

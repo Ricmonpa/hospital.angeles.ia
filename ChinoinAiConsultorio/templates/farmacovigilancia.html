@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Farmacovigilancia — Hospital Ángeles IA{% endblock %}
+{% block extra_head %}
+    <style>
+        .fv-form textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95em;
+            resize: vertical;
+        }
+        .fv-form textarea:focus {
+            outline: none;
+            border-color: var(--ha-accent);
+            box-shadow: 0 0 0 2px rgba(var(--ha-accent-rgb), 0.2);
+        }
+        .fv-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .fv-result {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 6px solid #888;
+            display: none;
+        }
+        .fv-result.visible { display: block; }
+        .fv-result.nivel-ROJO {
+            background: #fff0f0;
+            border-left-color: #c00;
+        }
+        .fv-result.nivel-NARANJA {
+            background: #fff8f0;
+            border-left-color: #f90;
+        }
+        .fv-result.nivel-VERDE {
+            background: #f0fff4;
+            border-left-color: #0a0;
+        }
+        .fv-semaforo {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+        .fv-mensaje {
+            font-weight: 600;
+            margin-bottom: 16px;
+            font-size: 1.05em;
+        }
+        .fv-detalles {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px 0;
+        }
+        .fv-detalles li {
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(0,0,0,0.04);
+            border-radius: 8px;
+            border-left: 4px solid #999;
+        }
+        .fv-detalles li.tipo-alergia { border-left-color: #c00; }
+        .fv-detalles li.tipo-interaccion { border-left-color: #f90; }
+        .fv-entidades {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .fv-entidades h4 { margin-bottom: 8px; color: #333; }
+        .fv-entidades ul { margin: 4px 0 12px 0; padding-left: 20px; }
+        .fv-loading {
+            display: none;
+            margin-top: 12px;
+            color: var(--ha-accent);
+            font-weight: 500;
+        }
+        .fv-loading.visible { display: block; }
+    </style>
+{% endblock %}
+{% block content %}
+        <h2>Validar receta o nota clínica</h2>
+        <p style="margin-bottom: 20px; color: #555;">Pegue el texto de la receta actual, la nota SOAP o un resumen que incluya medicamentos, tratamiento crónico y alergias. El sistema extrae entidades con IA y las cruza contra interacciones y alergias conocidas (sin inventar datos).</p>
+
+        <div class="card">
+            <h3>Texto a validar</h3>
+            <form id="fv-form" class="fv-form">
+                <textarea id="fv-texto" name="texto" placeholder="Ejemplo: Paciente refiere alergia a sulfas. Tratamiento crónico: warfarina 5 mg. Recetar: Bactrim 800/160 1 tab cada 12 h, ibuprofeno 400 mg cada 8 h..."></textarea>
+                <div class="fv-actions">
+                    <button type="submit" class="button primary" id="fv-btn">Validar farmacovigilancia</button>
+                    <span class="fv-loading" id="fv-loading">Validando…</span>
+                </div>
+            </form>
+
+            <div class="fv-result" id="fv-result">
+                <div class="fv-semaforo" id="fv-semaforo"></div>
+                <div class="fv-mensaje" id="fv-mensaje"></div>
+                <ul class="fv-detalles" id="fv-detalles"></ul>
+                <div class="fv-entidades" id="fv-entidades"></div>
+            </div>
+        </div>
+
+        <div class="card info">
+            <h3>Semáforo de riesgo</h3>
+            <p><strong>VERDE:</strong> No se detectaron interacciones ni alergias en la base actual. Mantener criterio clínico.</p>
+            <p><strong>NARANJA:</strong> Interacción severa; requiere ajuste, monitorización o cambio de tratamiento.</p>
+            <p><strong>ROJO:</strong> Contraindicación o riesgo vital; no prescribir sin revisar y ajustar.</p>
+        </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+    <script>
+        (function() {
+            var form = document.getElementById('fv-form');
+            var texto = document.getElementById('fv-texto');
+            var btn = document.getElementById('fv-btn');
+            var loading = document.getElementById('fv-loading');
+            var result = document.getElementById('fv-result');
+            var semaforo = document.getElementById('fv-semaforo');
+            var mensaje = document.getElementById('fv-mensaje');
+            var detalles = document.getElementById('fv-detalles');
+            var entidades = document.getElementById('fv-entidades');
+
+            var semaforos = { ROJO: '🔴 ROJO', NARANJA: '🟠 NARANJA', VERDE: '🟢 VERDE' };
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var t = (texto.value || '').trim();
+                if (!t) {
+                    alert('Escriba o pegue el texto a validar.');
+                    return;
+                }
+                btn.disabled = true;
+                loading.classList.add('visible');
+                result.classList.remove('visible');
+
+                fetch('{{ url_for("api_validar_farmacovigilancia") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texto: t })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var nivel = (data.nivel || 'VERDE').toUpperCase();
+                    semaforo.textContent = semaforos[nivel] || nivel;
+                    mensaje.textContent = data.mensaje || '';
+                    result.className = 'fv-result visible nivel-' + nivel;
+
+                    detalles.innerHTML = '';
+                    (data.detalles || []).forEach(function(d) {
+                        var li = document.createElement('li');
+                        li.className = 'tipo-' + (d.tipo || 'interaccion');
+                        li.innerHTML = '<strong>' + (d.nivel || '') + '</strong> ' + (d.mensaje || '');
+                        if (d.farmaco) li.innerHTML = '<strong>' + d.farmaco + '</strong> — ' + (d.mensaje || '');
+                        if (d.farmacos) li.innerHTML = '<strong>' + (d.farmacos.join(' + ') || '') + '</strong> — ' + (d.mensaje || '');
+                        detalles.appendChild(li);
+                    });
+
+                    var ent = data.entidades_extraidas || {};
+                    if (ent.receta_actual && ent.receta_actual.length) {
+                        var html = '<h4>Receta actual</h4><ul>';
+                        ent.receta_actual.forEach(function(r) {
+                            html += '<li>' + (r.nombre || '') + (r.dosis ? ' — ' + r.dosis : '') + (r.via ? ' (' + r.via + ')' : '') + '</li>';
+                        });
+                        html += '</ul>';
+                        if (ent.tratamiento_cronico && ent.tratamiento_cronico.length) {
+                            html += '<h4>Tratamiento crónico</h4><ul>';
+                            ent.tratamiento_cronico.forEach(function(r) { html += '<li>' + (r.nombre || '') + '</li>'; });
+                            html += '</ul>';
+                        }
+                        if (ent.alergias_conocidas && ent.alergias_conocidas.length) {
+                            html += '<h4>Alergias conocidas</h4><ul>';
+                            ent.alergias_conocidas.forEach(function(a) { html += '<li>' + a + '</li>'; });
+                            html += '</ul>';
+                        }
+                        entidades.innerHTML = html;
+                        entidades.style.display = 'block';
+                    } else {
+                        entidades.innerHTML = '';
+                        entidades.style.display = 'none';
+                    }
+
+                    if (data._debug && data._debug !== 'ok') {
+                        var dbg = document.createElement('div');
+                        dbg.style.cssText = 'margin-top:12px;padding:10px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;font-size:0.85em;color:#856404;word-break:break-all;';
+                        dbg.innerHTML = '<strong>Debug:</strong> ' + data._debug;
+                        detalles.parentNode.appendChild(dbg);
+                    }
+
+                    result.classList.add('visible');
+                })
+                .catch(function(err) {
+                    mensaje.textContent = 'Error de conexión o del servidor. Intente de nuevo.';
+                    semaforo.textContent = '⚠ Error';
+                    result.className = 'fv-result visible nivel-VERDE';
+                    detalles.innerHTML = '';
+                    entidades.innerHTML = '';
+                    result.classList.add('visible');
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    loading.classList.remove('visible');
+                });
+            });
+        })();
+    </script>
+{% endblock %}

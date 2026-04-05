@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Legal/Contable - Chinoin AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CHINOIN Logo" class="logo">
+            <div>
+                <h1>Asistente Legal/Contable</h1>
+                <p>Respuestas inmediatas a tus dudas de gestión fiscal</p>
+            </div>
+        </div>
+    </header>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/transcripcion">Transcriptor de Consultas (IA)</a>
+        <a href="/historial">Historial</a>
+        <a href="/asesoria" class="active">Asistente Legal/Contable</a>
+    </nav>
+    <main>
+        <div class="card">
+            <div class="legal-note">
+                ⚠️ <strong>Aviso Legal:</strong> Esta herramienta proporciona orientación general basada en normativas fiscales mexicanas vigentes. No sustituye la asesoría personalizada de un contador o abogado certificado. Para casos específicos complejos, consulte con un profesional.
+            </div>
+            
+            <h3>💬 Haz una Pregunta sobre Normativas Fiscales</h3>
+            
+            <div class="ejemplos-preguntas">
+                <p><strong>Ejemplos de preguntas:</strong></p>
+                <ul>
+                    <li>¿Es deducible el gasto de gasolina con tarjeta de crédito?</li>
+                    <li>¿Qué es el CFDI y cuándo debo emitirlo?</li>
+                    <li>¿Cuál es la tasa de IVA para honorarios médicos?</li>
+                    <li>¿Puedo deducir la renta de mi consultorio?</li>
+                    <li>¿Qué documentos necesito guardar para declaración anual?</li>
+                </ul>
+            </div>
+
+            <input type="text" id="pregunta_usuario" placeholder="Escribe tu pregunta aquí... Ej: ¿Es deducible el gasto de gasolina?">
+            
+            <button class="button primary" onclick="consultarNorma()" id="btnConsultar">
+                <span id="btnTexto">🤖 Consultar IA</span>
+                <span id="btnLoading" class="hidden">⏳ Consultando...</span>
+            </button>
+        </div>
+
+        <div id="respuesta_ia" class="card hidden">
+            <h3>💡 Respuesta del Asistente IA</h3>
+            <div id="respuesta_texto" class="respuesta-texto"></div>
+            
+            <div class="acciones-respuesta">
+                <button class="button secondary small" onclick="copiarRespuesta()">📋 Copiar Respuesta</button>
+                <button class="button secondary small" onclick="nuevaConsulta()">🔄 Nueva Consulta</button>
+            </div>
+        </div>
+
+        <div class="card info">
+            <h3>📚 Temas Cubiertos</h3>
+            <div class="temas-grid">
+                <div class="tema-item">
+                    <h4>💰 Deducibilidad de Gastos</h4>
+                    <p>Gasolina, renta, material médico, cursos profesionales</p>
+                </div>
+                <div class="tema-item">
+                    <h4>📄 CFDI (Facturación)</h4>
+                    <p>Obligaciones, requisitos, emisión y conservación</p>
+                </div>
+                <div class="tema-item">
+                    <h4>📊 Impuestos (ISR/IVA)</h4>
+                    <p>Tasas aplicables, retenciones, regímenes fiscales</p>
+                </div>
+                <div class="tema-item">
+                    <h4>⚖️ Cumplimiento Legal</h4>
+                    <p>NOM-004, avisos de privacidad, consentimientos</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function consultarNorma() {
+            const pregunta = document.getElementById('pregunta_usuario').value;
+            if (!pregunta.trim()) {
+                alert("Por favor, ingrese su pregunta.");
+                return;
+            }
+
+            const btnConsultar = document.getElementById('btnConsultar');
+            const btnTexto = document.getElementById('btnTexto');
+            const btnLoading = document.getElementById('btnLoading');
+            
+            btnConsultar.disabled = true;
+            btnTexto.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/consultar_norma', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pregunta: pregunta })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                document.getElementById('respuesta_texto').textContent = data.respuesta;
+                document.getElementById('respuesta_ia').classList.remove('hidden');
+                document.getElementById('respuesta_ia').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ocurrió un error al consultar. Por favor, intente nuevamente.');
+            } finally {
+                btnConsultar.disabled = false;
+                btnTexto.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        }
+
+        function copiarRespuesta() {
+            const texto = document.getElementById('respuesta_texto').textContent;
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('✅ Respuesta copiada al portapapeles');
+            }).catch(err => {
+                console.error('Error al copiar:', err);
+            });
+        }
+
+        function nuevaConsulta() {
+            document.getElementById('pregunta_usuario').value = '';
+            document.getElementById('respuesta_ia').classList.add('hidden');
+            document.getElementById('pregunta_usuario').focus();
+        }
+
+        document.getElementById('pregunta_usuario').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                consultarNorma();
+            }
+        });
+    </script>
+    <footer>
+        <p>&copy; 2025 CHINOIN® - Kit de herramientas gratuito para médicos | Powered by Gemini AI</p>
+    </footer>
+</body>
+</html>

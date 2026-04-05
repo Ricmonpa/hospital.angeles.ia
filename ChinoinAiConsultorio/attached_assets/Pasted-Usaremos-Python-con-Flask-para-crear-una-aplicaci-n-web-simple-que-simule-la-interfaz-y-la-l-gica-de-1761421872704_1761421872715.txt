@@ -1,0 +1,420 @@
+Usaremos Python con Flask para crear una aplicación web simple que simule la interfaz y la lógica de la IA.
+
+1. Configuración Inicial del Proyecto en Replit
+Prompt a ti mismo (Instrucción): Crea un nuevo proyecto en Replit utilizando la plantilla Python (Flask).
+
+Configuración del archivo principal (main.py):
+
+Python
+
+# main.py
+from flask import Flask, render_template, request, jsonify
+import os
+
+app = Flask(__name__)
+
+# Simulación de la clave de la API de IA (ej. si usaras Gemini o similar)
+# En un entorno real, esto iría en el archivo .env
+# Si tienes una clave de API, puedes integrarla aquí para hacer la IA real.
+# Por ahora, es una simulación.
+
+# --- MOCKUP DE DATOS ---
+# Simulación de un motor legal/contable simple
+NORMAS_CONTABLES = {
+    "deducibilidad_gasolina": "La gasolina es deducible al 100% solo si se paga con medios electrónicos y el vehículo es necesario para la actividad profesional.",
+    "factura_electronica": "La factura electrónica (CFDI) es obligatoria en México para deducir cualquier gasto.",
+    "iva_honorarios": "La tasa general de IVA en honorarios médicos es 0%, pero la retención de ISR aplica según el régimen fiscal.",
+}
+# -------------------------
+
+@app.route('/')
+def dashboard():
+    """Simula el Dashboard principal del Kit."""
+    # Aquí puedes añadir lógica para mostrar alertas y resumen financiero
+    return render_template('dashboard.html')
+
+# --- Módulo de Transcriptor de Consultas (IA) ---
+@app.route('/transcripcion')
+def vista_transcripcion():
+    """Vista de la herramienta Transcriptor de Consultas."""
+    return render_template('transcripcion.html')
+
+@app.route('/procesar_consulta', methods=['POST'])
+def procesar_consulta():
+    """
+    Simula el motor de la IA para procesar el texto de la consulta.
+    Este es el prompt más importante para simular la IA.
+    """
+    consulta_text = request.form.get('consulta_texto', '')
+
+    if not consulta_text:
+        return jsonify({"error": "No se recibió texto para analizar."}), 400
+
+    # --- SIMULACIÓN DEL PROCESAMIENTO IA (El Core) ---
+    # En un entorno real, aquí se llamaría a la API de un LLM con un prompt.
+    
+    # 1. Extracción y Clasificación de Datos (Simulación con lógica simple)
+    # Ejemplo de cómo un LLM clasificaría esto:
+    if "fiebre" in consulta_text.lower() and "dolor de garganta" in consulta_text.lower():
+        diagnostico_sugerido = "Faringitis Viral"
+        plan_sugerido = "Reposo, hidratación, Paracetamol 500mg cada 8 horas por 3 días."
+        cumplimiento_revisado = True
+    elif "factura" in consulta_text.lower() or "costo" in consulta_text.lower():
+        diagnostico_sugerido = "Nota: Consulta con enfoque administrativo/financiero."
+        plan_sugerido = "Generar CFDI de la consulta médica por $1200 MXN."
+        cumplimiento_revisado = True # O se podría simular que falta el consentimiento
+    else:
+        diagnostico_sugerido = "Pendiente de análisis más profundo."
+        plan_sugerido = "Revisar más detalles del caso."
+        cumplimiento_revisado = False
+
+    # 2. Formato SOAP (Simulación)
+    soap_output = f"""
+**S (Subjetivo):** El paciente reporta {consulta_text[:50]}...
+**O (Objetivo):** Sin hallazgos claros en la transcripción.
+**A (Análisis):** Sugerencia de diagnóstico: {diagnostico_sugerido}
+**P (Plan):** {plan_sugerido}
+"""
+    # ----------------------------------------------------
+
+    return jsonify({
+        "soap_output": soap_output,
+        "diagnostico": diagnostico_sugerido,
+        "plan": plan_sugerido,
+        "cumplimiento": "Verificado" if cumplimiento_revisado else "Pendiente de revisar Consentimiento"
+    })
+
+# --- Módulo de Asesoría Legal/Contable (IA) ---
+@app.route('/asesoria')
+def vista_asesoria():
+    """Vista del Asistente Legal/Contable."""
+    return render_template('asesoria.html')
+
+@app.route('/consultar_norma', methods=['POST'])
+def consultar_norma():
+    """Simula la respuesta del chatbot legal/contable."""
+    pregunta = request.form.get('pregunta', '').lower()
+    respuesta = "Lo siento, no tengo una respuesta específica para esa pregunta en mi base de datos de simulación."
+
+    if "gasolina" in pregunta or "deducir" in pregunta:
+        respuesta = NORMAS_CONTABLES["deducibilidad_gasolina"]
+    elif "cfdi" in pregunta or "factura" in pregunta:
+        respuesta = NORMAS_CONTABLES["factura_electronica"]
+    elif "iva" in pregunta or "honorarios" in pregunta:
+        respuesta = NORMAS_CONTABLES["iva_honorarios"]
+    
+    # En un caso real, aquí se llamaría a un LLM para procesar la pregunta y la base de datos de normas.
+    
+    return jsonify({"respuesta": respuesta})
+
+if __name__ == '__main__':
+    # Usamos 0.0.0.0 y el puerto 8080 que es lo que Replit usa por defecto
+    app.run(host='0.0.0.0', port=8080, debug=True)
+
+2. Estructura de HTML y CSS (Simulación de Interfaz)
+Crea una carpeta llamada templates y dentro, los siguientes archivos:
+
+A. templates/dashboard.html (Página de Inicio)
+HTML
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinoin AI Consultorio Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Chinoin AI Consultorio Manager</h1>
+        <p>Dashboard de Gestión</p>
+    </header>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/transcripcion">Transcriptor de Consultas (IA)</a>
+        <a href="/asesoria">Asistente Legal/Contable</a>
+    </nav>
+    <main>
+        <h2>Bienvenido, Dr./Dra. [Nombre del Médico]</h2>
+        <div class="card highlight">
+            <h3>¡Empieza Ya!</h3>
+            <p>Automatiza tus notas clínicas en segundos.</p>
+            <a href="/transcripcion" class="button primary">Iniciar Transcripción de Consulta</a>
+        </div>
+        
+        <div class="card alert">
+            <h3>Alertas de Cumplimiento</h3>
+            <p><strong>(2) Facturas pendientes de Clasificar.</strong></p>
+            <p><strong>(1) Aviso de Privacidad desactualizado.</strong></p>
+        </div>
+
+        <div class="card">
+            <h3>Resumen Financiero Rápido</h3>
+            <p>Ingresos del Mes: $45,000 MXN</p>
+            <p>Porcentaje de Gastos Deducibles: 95%</p>
+        </div>
+        
+        <div class="card">
+            <h3>Acceso al Portal Chinoin</h3>
+            <p>Cursos, eventos y novedades de la línea farmacéutica.</p>
+            <a href="https://emc.chinoin.com/es/portal-home-public" target="_blank" class="button secondary">Ir al Portal</a>
+        </div>
+    </main>
+</body>
+</html>
+B. templates/transcripcion.html (El Feature Estrella)
+HTML
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcriptor de Consultas - Chinoin AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Transcriptor de Consultas (IA)</h1>
+        <p>Convierte el diálogo en notas clínicas estructuradas.</p>
+    </header>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/transcripcion">Transcriptor de Consultas (IA)</a>
+        <a href="/asesoria">Asistente Legal/Contable</a>
+    </nav>
+    <main>
+        <div class="card">
+            <p class="legal-note">⚠️ **Aviso Legal:** Confirme haber obtenido el Consentimiento Informado (verbal o escrito) del paciente para grabar la consulta con fines de documentación.
+            </p>
+            
+            <h3>Simulación de Diálogo (Pegue el texto de la consulta aquí)</h3>
+            <textarea id="consulta_texto" rows="10" placeholder="Ejemplo: Médico: Buenos días Sra. Pérez, ¿qué la trae por aquí? Paciente: Me duele mucho la garganta y tengo fiebre de 38.5 desde hace dos días... Médico: Entiendo, revisemos..."></textarea>
+            
+            <button class="button primary" onclick="procesarConsulta()">Procesar Consulta (Simulación IA)</button>
+        </div>
+
+        <div id="resultados_ia" class="card hidden">
+            <h3>Resultados de Análisis IA</h3>
+            
+            <h4>1. Notas Clínicas SOAP (Listas para copiar y pegar)</h4>
+            <pre id="soap_output"></pre>
+            
+            <h4>2. Información Crítica y Cumplimiento</h4>
+            <p><strong>Diagnóstico Sugerido:</strong> <span id="diagnostico"></span></p>
+            <p><strong>Plan de Tratamiento:</strong> <span id="plan"></span></p>
+            <p><strong>Revisión de Cumplimiento:</strong> <span id="cumplimiento"></span></p>
+        </div>
+    </main>
+
+    <script>
+        function procesarConsulta() {
+            const texto = document.getElementById('consulta_texto').value;
+            if (!texto) {
+                alert("Por favor, ingrese el texto de la consulta para procesar.");
+                return;
+            }
+
+            fetch('/procesar_consulta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `consulta_texto=${encodeURIComponent(texto)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                document.getElementById('soap_output').textContent = data.soap_output;
+                document.getElementById('diagnostico').textContent = data.diagnostico;
+                document.getElementById('plan').textContent = data.plan;
+                document.getElementById('cumplimiento').textContent = data.cumplimiento;
+                
+                document.getElementById('resultados_ia').classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ocurrió un error al procesar la consulta.');
+            });
+        }
+    </script>
+</body>
+</html>
+C. templates/asesoria.html (Asistente Legal/Contable)
+HTML
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Legal/Contable - Chinoin AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Asistente Legal/Contable Rápido</h1>
+        <p>Respuestas inmediatas a tus dudas de gestión.</p>
+    </header>
+    <nav>
+        <a href="/">Dashboard</a>
+        <a href="/transcripcion">Transcriptor de Consultas (IA)</a>
+        <a href="/asesoria">Asistente Legal/Contable</a>
+    </nav>
+    <main>
+        <div class="card">
+            <p class="legal-note">⚠️ **Aviso Legal:** Esta herramienta es una guía. No sustituye la asesoría de un contador o abogado certificado.</p>
+            
+            <h3>Haz una Pregunta</h3>
+            <input type="text" id="pregunta_usuario" placeholder="Ej: ¿Es deducible el gasto de gasolina con tarjeta de crédito?">
+            
+            <button class="button primary" onclick="consultarNorma()">Consultar IA</button>
+        </div>
+
+        <div id="respuesta_ia" class="card hidden">
+            <h3>Respuesta del Asistente IA</h3>
+            <p id="respuesta_texto"></p>
+        </div>
+    </main>
+    
+    <script>
+        function consultarNorma() {
+            const pregunta = document.getElementById('pregunta_usuario').value;
+            if (!pregunta) {
+                alert("Por favor, ingrese su pregunta.");
+                return;
+            }
+
+            fetch('/consultar_norma', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `pregunta=${encodeURIComponent(pregunta)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('respuesta_texto').textContent = data.respuesta;
+                document.getElementById('respuesta_ia').classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ocurrió un error al consultar la norma.');
+            });
+        }
+    </script>
+</body>
+</html>
+3. CSS Básico (Estilo)
+Crea una carpeta llamada static y dentro el archivo style.css.
+
+CSS
+
+/* static/style.css */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+header {
+    background-color: #004d99; /* Azul fuerte, color corporativo */
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+nav {
+    background-color: #e0e0e0;
+    padding: 10px 0;
+    text-align: center;
+}
+
+nav a {
+    color: #004d99;
+    text-decoration: none;
+    margin: 0 15px;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+nav a:hover {
+    background-color: #ccc;
+}
+
+main {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+}
+
+.card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.highlight {
+    border-left: 5px solid #00b300; /* Verde de acción */
+}
+
+.alert {
+    border-left: 5px solid #ff9900; /* Naranja de advertencia */
+}
+
+.button {
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: inline-block;
+    border: none;
+}
+
+.primary {
+    background-color: #00b300;
+    color: white;
+}
+
+.secondary {
+    background-color: #f0f0f0;
+    color: #004d99;
+    border: 1px solid #004d99;
+}
+
+.hidden {
+    display: none;
+}
+
+textarea, input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+pre {
+    background-color: #f0f0f0;
+    padding: 15px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+}
+
+.legal-note {
+    font-size: 0.8em;
+    color: #cc0000;
+    padding: 5px;
+    border: 1px dashed #cc0000;
+    border-radius: 4px;
+}
