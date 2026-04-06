@@ -59,14 +59,15 @@ RUN chown -R opendoc:opendoc /app
 
 USER opendoc
 
-# App demo en producción: Flask en web/ (PORT lo inyecta Railway)
-WORKDIR /app/web
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
+WORKDIR /app/web
+
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import flask; print('ok')" || exit 1
 
-# NO usar src.core.main aquí: es demo CLI y exige GEMINI_API_KEY al boot.
-CMD ["python", "main.py"]
+# Flask en web/. Usar sh -c para que funcione aunque la plataforma ignore WORKDIR.
+# NO usar python -m src.core.main (CLI demo; exige GEMINI_API_KEY al arranque).
+CMD ["/bin/sh", "-c", "cd /app/web && exec python main.py"]
