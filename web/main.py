@@ -54,6 +54,18 @@ if not GROQ_API_KEY:
 app = Flask(__name__)
 app.secret_key = SESSION_SECRET
 
+# Railway termina TLS en el edge; sin esto Flask cree que la petición es http://
+# y pueden generarse enlaces/cookies inseguros y Chrome marca "No seguro" (contenido mixto).
+if os.environ.get("RAILWAY_ENVIRONMENT"):
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
+    app.config["PREFERRED_URL_SCHEME"] = "https"
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 
 def _agente_contable_hist_to_genai(records):
     """Convierte historial de sesión a formato esperado por Gemini chat."""
